@@ -73,11 +73,6 @@ test("vscode reasoning metadata supports GPT-5.6 Max and Ultra without splitting
     owned_by: "codex",
     capabilities: { reasoning: true },
   };
-  const terra = {
-    id: "cx/gpt-5.6-terra",
-    owned_by: "codex",
-    capabilities: { reasoning: true },
-  };
   const luna = {
     id: "cx/gpt-5.6-luna",
     owned_by: "codex",
@@ -85,14 +80,7 @@ test("vscode reasoning metadata supports GPT-5.6 Max and Ultra without splitting
   };
 
   assert.deepEqual(reasoningMetadata.getReasoningEffortValues(sol), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-    "ultra",
-  ]);
-  assert.deepEqual(reasoningMetadata.getReasoningEffortValues(terra), [
+    "none",
     "low",
     "medium",
     "high",
@@ -101,15 +89,13 @@ test("vscode reasoning metadata supports GPT-5.6 Max and Ultra without splitting
     "ultra",
   ]);
   assert.deepEqual(reasoningMetadata.getReasoningEffortValues(luna), [
+    "none",
     "low",
     "medium",
     "high",
     "xhigh",
     "max",
   ]);
-  assert.equal(reasoningMetadata.getDefaultReasoningEffort(sol), "low");
-  assert.equal(reasoningMetadata.getDefaultReasoningEffort(terra), "medium");
-  assert.equal(reasoningMetadata.getDefaultReasoningEffort(luna), "medium");
   assert.equal(
     reasoningMetadata.inferSelectedReasoningEffort(
       { ...sol, id: "cx/gpt-5.6-sol-ultra" },

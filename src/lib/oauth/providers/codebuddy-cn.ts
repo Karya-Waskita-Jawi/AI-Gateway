@@ -38,10 +38,7 @@ export const codebuddyCn = {
   flowType: "device_code" as const,
 
   requestDeviceCode: async (config: CodeBuddyConfig): Promise<CodeBuddyDeviceCodeResponse> => {
-    // CodeBuddy reads `platform` from the QUERY string, not the JSON body — sending it only in the
-    // body returns 400 "platform is empty" (verified). Pass it as a query param; body kept as-is.
-    const stateUrl = `${config.stateUrl}?platform=${encodeURIComponent(config.platform)}`;
-    const response = await fetch(stateUrl, {
+    const response = await fetch(config.stateUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

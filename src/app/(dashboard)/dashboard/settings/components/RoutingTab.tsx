@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Collapsible, Input, Select, Toggle } from "@/shared/components";
-import ModelSelectField from "@/shared/components/ModelSelectField";
 import { useTranslations } from "next-intl";
 import { useNotificationStore } from "@/store/notificationStore";
 import {
@@ -1503,12 +1502,18 @@ export default function RoutingTab() {
                 "When a request includes a native web_search tool, route the whole request to this model instead of the default — useful for providers that don't implement Anthropic's web_search server tool. Leave blank to disable."}
             </p>
             <div className="mt-3">
-              <ModelSelectField
-                value={String(settings.webSearchRouteModel ?? "")}
-                onChange={(v) => updateSetting({ webSearchRouteModel: v })}
-                placeholder={t("webSearchRoutePlaceholder") || "Search or select a model…"}
+              <Input
+                value={
+                  typeof settings.webSearchRouteModel === "string"
+                    ? settings.webSearchRouteModel
+                    : ""
+                }
+                onChange={(e) => updateSetting({ webSearchRouteModel: e.target.value })}
+                placeholder={
+                  t("webSearchRoutePlaceholder") || "e.g. openrouter,anthropic/claude-3.5-sonnet"
+                }
                 disabled={loading}
-                ariaLabel={t("webSearchRouteTitle") || "Web search routing model"}
+                aria-label={t("webSearchRouteTitle") || "Web search routing model"}
               />
             </div>
           </div>

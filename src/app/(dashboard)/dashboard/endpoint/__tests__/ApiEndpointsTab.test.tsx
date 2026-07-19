@@ -29,14 +29,10 @@ vi.mock("next-intl", () => ({
       "endpoint.showInternal": "Show internal",
       "endpoint.hideInternal": "Hide internal",
       "endpoint.vscodeAliasTitle": "VS Code Token Alias",
-      "endpoint.vscodeAliasDescriptionReady":
-        "Ready-to-paste compatibility URLs using the /api/v1/vscode/{token}/... endpoint.",
-      "endpoint.vscodeAliasDescriptionError":
-        "Showing placeholder URLs because CLI keys could not be loaded in this session.",
-      "endpoint.vscodeAliasDescriptionLoading":
-        "Loading CLI keys. Placeholder URLs are shown until a key is available.",
-      "endpoint.vscodeAliasDescriptionPlaceholder":
-        "Showing placeholder URLs. Create or activate an API key in CLI Tools to replace {token}.",
+      "endpoint.vscodeAliasDescriptionReady": "Ready-to-paste compatibility URLs using the /api/v1/vscode/{token}/... endpoint.",
+      "endpoint.vscodeAliasDescriptionError": "Showing placeholder URLs because CLI keys could not be loaded in this session.",
+      "endpoint.vscodeAliasDescriptionLoading": "Loading CLI keys. Placeholder URLs are shown until a key is available.",
+      "endpoint.vscodeAliasDescriptionPlaceholder": "Showing placeholder URLs. Create or activate an API key in CLI Tools to replace {token}.",
       "endpoint.vscodeAliasManage": "CLI Tools",
       "endpoint.vscodeAliasBaseLabel": "VS Code base",
       "endpoint.vscodeAliasModelsLabel": "VS Code models",
@@ -118,7 +114,6 @@ describe("ApiEndpointsTab", () => {
       cleanupCallbacks.pop()?.();
     }
     document.body.innerHTML = "";
-    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
@@ -179,7 +174,6 @@ describe("ApiEndpointsTab", () => {
   });
 
   it("renders curl example using window.location.origin when NEXT_PUBLIC_BASE_URL is unset", async () => {
-    vi.stubEnv("NEXT_PUBLIC_BASE_URL", "");
     fetchMock.mockImplementation(async (input) => {
       if (input === "/api/cli-tools/keys") {
         return jsonResponse({ keys: [] });
@@ -227,7 +221,7 @@ describe("ApiEndpointsTab", () => {
 
     expect(
       expectedOrigins.some((origin) =>
-        renderedText.includes(`curl -X POST ${origin}/api/v1/chat/completions`)
+        renderedText.includes(`curl -X POST ${origin}/v1/chat/completions`)
       )
     ).toBe(true);
   });

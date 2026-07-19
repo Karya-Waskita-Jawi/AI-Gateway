@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { getDbInstance } from "./core";
 import { backupDbFile } from "./backup";
 import { invalidateDbCache } from "./readCache";
-import { invalidateReasoningRoutingRuleCache } from "./reasoningRoutingRules";
 import { normalizeComboRecord } from "@/lib/combos/steps";
 import { clearSessionModelHistoryForCombo } from "./contextHandoffs";
 
@@ -323,7 +322,6 @@ export async function deleteCombo(id: string) {
   const result = db.prepare("DELETE FROM combos WHERE id = ?").run(id);
   if (result.changes === 0) return false;
   invalidateDbCache("combos");
-  invalidateReasoningRoutingRuleCache();
   backupDbFile("pre-write");
   return true;
 }

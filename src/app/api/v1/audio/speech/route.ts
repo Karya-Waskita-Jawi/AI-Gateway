@@ -23,7 +23,6 @@ import {
 import { attachOmniRouteMetaToResponse } from "@/domain/omnirouteResponseMeta";
 import { calculateModalCost } from "@/lib/usage/costCalculator";
 import { generateRequestId } from "@/shared/utils/requestId";
-import { getClientIpFromRequest } from "@/lib/ipUtils";
 
 /**
  * Handle CORS preflight
@@ -113,7 +112,6 @@ async function postHandler(request, context) {
     credentials,
     resolvedProvider: providerConfig,
     resolvedModel,
-    clientIp: getClientIpFromRequest(request),
   });
   if (response?.ok) {
     await clearRecoveredProviderState(credentials);

@@ -41,37 +41,17 @@ const OPENCODE_COOLDOWN_MAX_MS = 60_000;
 const EFFORT_LEVELS = ["low", "medium", "high", "max"] as const;
 
 /**
- * Models on opencode-go that support effort-tier aliases. Each entry maps the
- * canonical base id to the set of effort suffixes the upstream supports.
- *
- * - deepseek-v4-pro: all four tiers (low/medium/high/max)
- * - glm-5.2: high/max only (Z.AI maps these through the reasoning plane;
- *   low/medium are not supported on the OpenAI transport)
- * - mimo-v2.5: high/max only (same reasoning; Xiaomi MiMo does not document
- *   low/medium effort tiers)
- */
-const EFFORT_TIERS: Record<string, readonly string[]> = {
-  "deepseek-v4-pro": EFFORT_LEVELS,
-  "glm-5.2": ["high", "max"],
-  "mimo-v2.5": ["high", "max"],
-};
-
-/**
- * Parse a model string with an effort-level suffix.
+ * Parse a DeepSeek V4 Pro model string with an effort-level suffix.
  * e.g. "deepseek-v4-pro-low" → { baseModel: "deepseek-v4-pro", effort: "low" }
- *      "glm-5.2-high"         → { baseModel: "glm-5.2", effort: "high" }
- * Returns null if the model doesn't match any known effort-tier pattern.
+ * Returns null if the model doesn't match the pattern.
  */
-export function parseEffortLevel(model: string): { baseModel: string; effort: string } | null {
+function parseDeepSeekEffortLevel(model: string): { baseModel: string; effort: string } | null {
   const m = String(model || "");
-  for (const [baseModel, levels] of Object.entries(EFFORT_TIERS)) {
-    for (const level of levels) {
-      if (m === `${baseModel}-${level}`) {
-        return { baseModel, effort: level };
-      }
-    }
-  }
-  return null;
+  const matchedLevel = EFFORT_LEVELS.find((level) => m.endsWith(`-${level}`));
+  if (!matchedLevel) return null;
+  const baseModel = m.slice(0, -matchedLevel.length - 1);
+  if (baseModel.toLowerCase() !== "deepseek-v4-pro") return null;
+  return { baseModel: "deepseek-v4-pro", effort: matchedLevel };
 }
 
 export class OpencodeExecutor extends BaseExecutor {
@@ -336,7 +316,7 @@ export class OpencodeExecutor extends BaseExecutor {
     }
     if (modifiedBody && typeof modifiedBody === "object" && !Array.isArray(modifiedBody)) {
       const mb = modifiedBody as Record<string, unknown>;
-      const parsed = parseEffortLevel(model);
+      const parsed = parseDeepSeekEffortLevel(model);
       if (parsed) {
         mb.model = parsed.baseModel;
         if (mb.reasoning_effort === undefined) {

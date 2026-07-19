@@ -42,7 +42,6 @@ export interface ProviderModelsSectionProps {
   isAnthropicProtocolCompatible: boolean;
   isManagedAvailableModelsProvider: boolean;
   compatibleSupportsModelImport: boolean;
-  allowModelImport: boolean;
 
   // Models data
   models: Array<{ id: string; name?: string; source?: string }>;
@@ -122,7 +121,6 @@ export default function ProviderModelsSection({
   isAnthropicProtocolCompatible,
   isManagedAvailableModelsProvider,
   compatibleSupportsModelImport,
-  allowModelImport,
   models,
   modelMeta,
   modelAliases,
@@ -172,7 +170,7 @@ export default function ProviderModelsSection({
 }: ProviderModelsSectionProps) {
   const [freeFilter, setFreeFilter] = useState<"all" | "free" | "paid">("all");
   const [sortFreeFirst, setSortFreeFirst] = useState(false);
-  const autoSyncToggle = allowModelImport && compatibleSupportsModelImport && canImportModels && (
+  const autoSyncToggle = compatibleSupportsModelImport && canImportModels && (
     <button
       onClick={handleToggleAutoSync}
       disabled={togglingAutoSync}
@@ -250,7 +248,7 @@ export default function ProviderModelsSection({
           saveModelCompatFlags={saveModelCompatFlags}
           compatSavingModelId={compatSavingModelId}
           onModelsChanged={fetchProviderModelMeta}
-          allowImport={allowModelImport && compatibleSupportsModelImport}
+          allowImport={compatibleSupportsModelImport}
           isModelHidden={effectiveModelHidden}
           onToggleHidden={(modelId, hidden) => handleToggleModelHidden(providerId, modelId, hidden)}
           onBulkToggleHidden={(modelIds, hidden) =>
@@ -290,20 +288,18 @@ export default function ProviderModelsSection({
     return (
       <div>
         <div className="flex items-center gap-2 mb-4">
-          {allowModelImport && (
-            <Button
-              size="sm"
-              variant="secondary"
-              icon="download"
-              onClick={handleImportModels}
-              disabled={!canImportModels || importingModels}
-            >
-              {importingModels ? t("importingModels") : t("importFromModels")}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="download"
+            onClick={handleImportModels}
+            disabled={!canImportModels || importingModels}
+          >
+            {importingModels ? t("importingModels") : t("importFromModels")}
+          </Button>
           {autoSyncToggle}
           {clearAllButton}
-          {allowModelImport && !canImportModels && (
+          {!canImportModels && (
             <span className="text-xs text-text-muted">{t("addConnectionToImport")}</span>
           )}
         </div>
@@ -346,7 +342,7 @@ export default function ProviderModelsSection({
     );
   }
 
-  const importButton = allowModelImport ? (
+  const importButton = (
     <div className="flex items-center gap-2 mb-4">
       <Button
         size="sm"
@@ -362,7 +358,7 @@ export default function ProviderModelsSection({
         <span className="text-xs text-text-muted">{t("addConnectionToImport")}</span>
       )}
     </div>
-  ) : null;
+  );
 
   if (models.length === 0) {
     return (

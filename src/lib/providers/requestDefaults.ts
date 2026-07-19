@@ -129,54 +129,6 @@ export function normalizeRequestDefaults(
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
-const CACHE_PASSTHROUGH_VALUES = new Set(["strip", "openai-format", "claude-format"]);
-
-// #6880 — per-connection prompt-cache capability override: strip unknown keys / invalid
-// types, drop the sub-object entirely when nothing valid survives.
-export function normalizeCacheOverride(value: unknown): JsonRecord | undefined {
-  const record = asRecord(value);
-  if (Object.keys(record).length === 0) return undefined;
-
-  const normalized: JsonRecord = {};
-  if (typeof record.supportsPromptCaching === "boolean") {
-    normalized.supportsPromptCaching = record.supportsPromptCaching;
-  }
-  if (
-    typeof record.cacheControlPassthrough === "string" &&
-    CACHE_PASSTHROUGH_VALUES.has(record.cacheControlPassthrough)
-  ) {
-    normalized.cacheControlPassthrough = record.cacheControlPassthrough;
-  }
-
-  return Object.keys(normalized).length > 0 ? normalized : undefined;
-}
-
-// #6880 — extracted so normalizeProviderSpecificData() stays under the
-// max-lines-per-function gate: normalizes the two nested-object sub-fields
-// (requestDefaults, cache) in one pass.
-function normalizeNestedSubObjects(
-  provider: string | null | undefined,
-  normalized: JsonRecord
-): void {
-  if ("requestDefaults" in normalized) {
-    const requestDefaults = normalizeRequestDefaults(provider, normalized.requestDefaults);
-    if (requestDefaults) {
-      normalized.requestDefaults = requestDefaults;
-    } else {
-      delete normalized.requestDefaults;
-    }
-  }
-
-  if ("cache" in normalized) {
-    const cache = normalizeCacheOverride(normalized.cache);
-    if (cache) {
-      normalized.cache = cache;
-    } else {
-      delete normalized.cache;
-    }
-  }
-}
-
 export function normalizeProviderSpecificData(
   provider: string | null | undefined,
   value: unknown
@@ -186,7 +138,14 @@ export function normalizeProviderSpecificData(
 
   const normalized: JsonRecord = { ...record };
 
-  normalizeNestedSubObjects(provider, normalized);
+  if ("requestDefaults" in normalized) {
+    const requestDefaults = normalizeRequestDefaults(provider, normalized.requestDefaults);
+    if (requestDefaults) {
+      normalized.requestDefaults = requestDefaults;
+    } else {
+      delete normalized.requestDefaults;
+    }
+  }
 
   if ("openaiStoreEnabled" in normalized && typeof normalized.openaiStoreEnabled !== "boolean") {
     delete normalized.openaiStoreEnabled;

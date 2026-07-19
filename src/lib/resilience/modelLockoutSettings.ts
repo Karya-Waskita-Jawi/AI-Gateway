@@ -1,5 +1,3 @@
-import { isAutomatedTestProcess } from "@/shared/utils/testProcess";
-
 export interface ModelLockoutSettings {
   enabled: boolean;
   errorCodes: number[];
@@ -58,7 +56,10 @@ export function resolveModelLockoutSettings(
 ): ModelLockoutSettings {
   const record = asRecord(settings);
   const raw = asRecord(record.modelLockout);
-  const isTest = isAutomatedTestProcess();
+  const isTest =
+    process.env.NODE_ENV === "test" ||
+    process.execArgv.includes("--test") ||
+    process.argv.some((arg) => typeof arg === "string" && arg.includes("test"));
 
   const baseCooldownMs = toInteger(
     raw.baseCooldownMs,

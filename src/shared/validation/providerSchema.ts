@@ -25,7 +25,6 @@ export const ProviderSchema = z.object({
   isEmbeddedService: z.boolean().optional(),
   deprecated: z.boolean().optional(),
   deprecationReason: z.string().optional(),
-  hiddenFromDashboard: z.boolean().optional(),
   hasFree: z.boolean().optional(),
   freeNote: z.string().optional(),
   authHint: z.string().optional(),
@@ -33,7 +32,6 @@ export const ProviderSchema = z.object({
   serviceKinds: z.array(z.enum(SERVICE_KIND_VALUES)).optional(),
   noAuth: z.boolean().optional(),
   anonymousFallback: z.boolean().optional(),
-  managedAccount: z.boolean().optional(),
 });
 
 export const ProvidersMapSchema = z.record(z.string(), ProviderSchema);

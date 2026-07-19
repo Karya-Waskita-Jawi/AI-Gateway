@@ -1,7 +1,6 @@
 // CLI Tools configuration
 import { getClaudeCodeDefaultModels } from "@omniroute/open-sse/config/providerRegistry";
 import type { CliCatalogEntry } from "@/shared/schemas/cliCatalog";
-import { GROK_BUILD_CLI_TOOL } from "@/shared/constants/cliToolsGrokBuild";
 
 const _cc = getClaudeCodeDefaultModels();
 
@@ -541,6 +540,7 @@ export const CLI_TOOLS: Record<string, CliCatalogEntry> = {
     acpSpawnable: false,
     baseUrlSupport: "full",
   },
+
   // ── Code entries — aider ──────────────────────────────────────────────────
   aider: {
     id: "aider",
@@ -567,6 +567,7 @@ export const CLI_TOOLS: Record<string, CliCatalogEntry> = {
 aider --openai-api-base "{{baseUrl}}" --model "{{model}}"`,
     },
   },
+
   // ── Code entries — forge ──────────────────────────────────────────────────
   forge: {
     id: "forge",
@@ -583,7 +584,6 @@ aider --openai-api-base "{{baseUrl}}" --model "{{model}}"`,
     defaultCommand: "forge",
   },
 
-  "grok-build": GROK_BUILD_CLI_TOOL,
   // ── Code entries — cursor-cli ─────────────────────────────────────────────
   "cursor-cli": {
     id: "cursor-cli",

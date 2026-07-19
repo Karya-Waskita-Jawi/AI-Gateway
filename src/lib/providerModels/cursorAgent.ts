@@ -107,36 +107,11 @@ export function humanizeCursorModelId(id: string): string {
 }
 
 export function parseCursorAgentModels(text: string): string[] {
-  // Older Cursor Agent releases only exposed the catalog as part of the
-  // invalid-model error produced by `--model --help`.
-  const legacyMatch = text.match(/Available models:\s*([^\n]+)/);
-  if (legacyMatch) {
-    return deduplicateCursorModelIds(legacyMatch[1].split(","));
-  }
-
-  // Current releases expose an official `models` command whose output is:
-  //
-  // Available models
-  //
-  // auto - Auto (default)
-  // gpt-5.3-codex - Codex 5.3
-  const headerMatch = /(?:^|\n)Available models\s*(?:\n|$)/.exec(text);
-  if (!headerMatch) return [];
-  const lines = text.slice(headerMatch.index + headerMatch[0].length).split("\n");
-  const ids: string[] = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("Tip:")) break;
-    const separator = trimmed.indexOf(" - ");
-    if (separator > 0) ids.push(trimmed.slice(0, separator));
-  }
-  return deduplicateCursorModelIds(ids);
-}
-
-function deduplicateCursorModelIds(ids: string[]): string[] {
+  const match = text.match(/Available models:\s*([^\n]+)/);
+  if (!match) return [];
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const raw of ids) {
+  for (const raw of match[1].split(",")) {
     const id = raw.trim();
     if (!id || seen.has(id)) continue;
     seen.add(id);
@@ -163,13 +138,12 @@ export async function fetchCursorAgentModels(
     );
   }
 
-  const startedAt = Date.now();
+  // cursor-agent prints "Available models: ..." to stderr and exits non-zero
+  // when given an unknown model id, so we intentionally pass `--help` as the
+  // model value to coerce it into listing.
   let result: { stdout: string; stderr: string };
   try {
-    // Modern Cursor Agent releases provide a dedicated catalog flag. Prefer the
-    // flag over the equivalent `models` subcommand because older releases can
-    // interpret an unknown positional subcommand as an agent prompt.
-    result = await runCursorAgent(binary, ["--list-models"], timeoutMs);
+    result = await runCursorAgent(binary, ["--model", "--help"], timeoutMs);
   } catch (err: unknown) {
     const e = err as NodeJS.ErrnoException;
     if (e?.code === "ENOENT") {
@@ -177,24 +151,11 @@ export async function fetchCursorAgentModels(
     }
     throw err;
   }
-  let combined = `${result.stdout}\n${result.stderr}`;
-  let ids = parseCursorAgentModels(combined);
+  const combined = `${result.stdout}\n${result.stderr}`;
 
-  // Backward compatibility for releases from before the dedicated catalog interface.
-  if (ids.length === 0 && !/Authentication required|Not logged in/i.test(combined)) {
-    const remainingTimeoutMs = timeoutMs - (Date.now() - startedAt);
-    if (remainingTimeoutMs > 0) {
-      result = await runCursorAgent(binary, ["--model", "--help"], remainingTimeoutMs);
-      combined = `${result.stdout}\n${result.stderr}`;
-      ids = parseCursorAgentModels(combined);
-    }
-  }
-
+  const ids = parseCursorAgentModels(combined);
   if (ids.length === 0) {
-    if (/Authentication required|Not logged in/i.test(combined)) {
-      throw new Error("cursor-agent is not authenticated; run 'agent login' on the OmniRoute host");
-    }
-    throw new Error("cursor-agent did not return a model catalog from 'agent --list-models'");
+    throw new Error("cursor-agent did not return an 'Available models:' line");
   }
 
   return ids.map((id) => ({

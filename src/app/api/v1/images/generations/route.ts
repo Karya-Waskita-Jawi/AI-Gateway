@@ -10,11 +10,9 @@ import {
   parseImageModel,
   getImageProvider,
   getImageModelEntry,
-  modalitiesRequireImageInput,
 } from "@omniroute/open-sse/config/imageRegistry.ts";
 import { errorResponse, unavailableResponse } from "@omniroute/open-sse/utils/error.ts";
 import { HTTP_STATUS } from "@omniroute/open-sse/config/constants.ts";
-import { isAllRateLimitedCredentials } from "@/app/api/v1/_shared/rateLimit";
 import * as log from "@/sse/utils/logger";
 import { toJsonErrorPayload } from "@/shared/utils/upstreamError";
 import { enforceApiKeyPolicy } from "@/shared/utils/apiKeyPolicy";
@@ -152,13 +150,7 @@ async function postHandler(request, context) {
   const imageModelEntry = getImageModelEntry(body.model);
   const inputModalities = imageModelEntry?.inputModalities || ["text"];
   const requiresPrompt = inputModalities.includes("text");
-  // imageRequired is an explicit registry override for models that list "text" among
-  // their modalities (they accept a prompt) but mechanically require an input image
-  // regardless — e.g. Stability AI's dedicated edit/control/upscale endpoints. Without
-  // it, modalitiesRequireImageInput() would infer "image optional" for any model that
-  // also lists "text", which is wrong for those.
-  const requiresImageInput =
-    Boolean(imageModelEntry?.imageRequired) || modalitiesRequireImageInput(inputModalities);
+  const requiresImageInput = inputModalities.includes("image");
   const hasPrompt = typeof body.prompt === "string" && body.prompt.trim().length > 0;
   const hasImageInput = hasImageGenerationInput(body);
 
@@ -209,14 +201,6 @@ async function postHandler(request, context) {
         credentials.retryAfter,
         credentials.retryAfterHuman
       );
-    }
-  } else if (providerConfig && providerConfig.authType === "none") {
-    // #6928: best-effort per-connection base-URL override lookup for local
-    // no-auth media providers (ComfyUI). A connection is optional here — unlike
-    // the authType !== "none" branch above, we never 400 when none exists.
-    const localCredentials = await getProviderCredentialsWithQuotaPreflight(provider);
-    if (localCredentials && !isAllRateLimitedCredentials(localCredentials)) {
-      credentials = localCredentials;
     }
   }
 

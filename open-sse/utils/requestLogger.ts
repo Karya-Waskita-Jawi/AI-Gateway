@@ -11,7 +11,6 @@ type HeaderInput =
   | undefined;
 
 export type RequestPipelinePayloads = {
-  routeDecision?: JsonRecord;
   clientRawRequest?: JsonRecord;
   openaiRequest?: JsonRecord;
   providerRequest?: JsonRecord;
@@ -28,7 +27,6 @@ export type RequestPipelinePayloads = {
 type RequestLogger = {
   sessionPath: null;
   logClientRawRequest: (endpoint: unknown, body: unknown, headers?: HeaderInput) => void;
-  logRouteDecision: (decision: unknown) => void;
   logOpenAIRequest: (body: unknown) => void;
   logTargetRequest: (url: unknown, headers: HeaderInput, body: unknown) => void;
   logProviderResponse: (
@@ -124,13 +122,6 @@ export function cloneBoundedForLog(value: unknown, depth = 0, key: string | null
   if (value === null || value === undefined) return value;
   if (typeof value === "string") return truncateLogString(value);
   if (typeof value !== "object") return value;
-  // Binary/opaque byte views (Uint8Array, Buffer, DataView, ...) are not
-  // "real" arrays to Array.isArray(); without this guard they fall through
-  // to the generic-object branch below and get expanded into one JS key per
-  // decoded byte instead of being treated as an opaque buffer (see #7297).
-  if (ArrayBuffer.isView(value)) {
-    return `[binary ${(value as ArrayBufferView).byteLength} bytes]`;
-  }
   if (depth >= 6) return "[MaxDepth]";
 
   if (Array.isArray(value)) {
@@ -311,13 +302,9 @@ export async function createRequestLogger(
   const chunkMethods = makeStreamChunkMethods(options, captureStreamChunks);
 
   if (options.enabled === false) {
-    let routeDecision: JsonRecord | null = null;
     return {
       sessionPath: null,
       logClientRawRequest() {},
-      logRouteDecision(decision) {
-        routeDecision = cloneBoundedForLog(decision) as JsonRecord;
-      },
       logOpenAIRequest() {},
       logTargetRequest() {},
       logProviderResponse() {},
@@ -327,7 +314,7 @@ export async function createRequestLogger(
       appendConvertedChunk: chunkMethods.appendConvertedChunk,
       logError() {},
       getPipelinePayloads() {
-        return routeDecision ? { routeDecision } : null;
+        return null;
       },
     };
   }
@@ -346,10 +333,6 @@ export async function createRequestLogger(
         headers: maskSensitiveHeaders(headers),
         body: cloneBoundedForLog(body),
       };
-    },
-
-    logRouteDecision(decision) {
-      payloads.routeDecision = cloneBoundedForLog(decision) as JsonRecord;
     },
 
     logOpenAIRequest(body) {

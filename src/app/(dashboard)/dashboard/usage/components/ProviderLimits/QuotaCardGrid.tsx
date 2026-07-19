@@ -14,11 +14,10 @@ interface Props {
   renderInlineQuotaSummary?: (quota: any) => ReactNode;
   onRefresh: (id: string, provider: string) => void;
   onOpenCutoff: (connection: any) => void;
-  onOpenResetCredits?: (id: string, provider: string) => void;
+  onRedeemResetCredit?: (id: string, provider: string) => void;
   onToggleActive: (id: string, nextActive: boolean) => void;
   togglingActiveId: string | null;
   redeemingResetCreditId?: string | null;
-  loadingResetCreditsId?: string | null;
 }
 
 export default function QuotaCardGrid({
@@ -32,11 +31,10 @@ export default function QuotaCardGrid({
   renderInlineQuotaSummary: _renderInlineQuotaSummary,
   onRefresh,
   onOpenCutoff,
-  onOpenResetCredits,
+  onRedeemResetCredit,
   onToggleActive,
   togglingActiveId,
   redeemingResetCreditId = null,
-  loadingResetCreditsId = null,
 }: Props) {
   if (connections.length === 0) return null;
 
@@ -71,11 +69,10 @@ export default function QuotaCardGrid({
                 providerLabel={providerLabels[conn.provider] || conn.provider}
                 onRefresh={() => onRefresh(conn.id, conn.provider)}
                 onOpenCutoff={() => onOpenCutoff(conn)}
-                onOpenResetCredits={() => onOpenResetCredits?.(conn.id, conn.provider)}
+                onRedeemResetCredit={() => onRedeemResetCredit?.(conn.id, conn.provider)}
                 onToggleActive={(nextActive) => onToggleActive(conn.id, nextActive)}
                 togglingActive={togglingActiveId === conn.id}
                 redeemingResetCredit={redeemingResetCreditId === conn.id}
-                loadingResetCredits={loadingResetCreditsId === conn.id}
               />
             ))}
           </div>

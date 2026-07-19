@@ -13,15 +13,10 @@ import {
 import { partitionNoAuthEntriesByBlocked } from "@/shared/utils/noAuthProviders";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
-import {
-  isProviderConnectionConnected,
-  isProviderConnectionErrored,
-} from "@/shared/utils/providerConnectionStatus";
 import { pickDisplayValue } from "@/shared/utils/maskEmail";
 import useEmailPrivacyStore from "@/store/emailPrivacyStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useTranslations } from "next-intl";
-import { useSyncedModelsByProvider } from "./hooks/useSyncedModelsByProvider";
 import {
   buildStaticProviderEntries,
   buildCompatibleProviderGroups,
@@ -29,7 +24,6 @@ import {
   filterConfiguredProviderEntries,
   shouldFilterProviderEntriesForDisplayMode,
   shouldShowFirstProviderHint,
-  shouldShowProviderSection,
   upsertProviderNodeById,
   loadProviderPageData,
 } from "./providerPageUtils";
@@ -47,7 +41,6 @@ import {
 } from "@/lib/providers/codexFastTier";
 import AddCompatibleProviderModal from "./components/AddCompatibleProviderModal";
 import { CategoryDot } from "./components/CategoryDot";
-import { ImportProvidersFromFileModal } from "./components/ImportProvidersFromFileModal";
 import NoAuthProvidersSection from "./components/NoAuthProvidersSection";
 import ProviderCard from "./components/ProviderCard";
 import ProviderCountBadge from "./components/ProviderCountBadge";
@@ -187,7 +180,6 @@ export default function ProvidersPage() {
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
   const [showAddAnthropicCompatibleModal, setShowAddAnthropicCompatibleModal] = useState(false);
   const [showAddCcCompatibleModal, setShowAddCcCompatibleModal] = useState(false);
-  const [showImportFromFileModal, setShowImportFromFileModal] = useState(false);
   const [testingMode, setTestingMode] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<any>(null);
   const [providerDisplayMode, setProviderDisplayMode] = useState<ProviderDisplayMode>("all");
@@ -199,13 +191,13 @@ export default function ProvidersPage() {
   const [repairingEnv, setRepairingEnv] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [modelSearchQuery, setModelSearchQuery] = useState("");
-  const liveModelsByProviderId = useSyncedModelsByProvider();
   const [showFreeOnly, setShowFreeOnly] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // #4240: media-category (serviceKind) filter — composes with activeCategory,
   // search and configured-only. null = no serviceKind filter.
   const [activeServiceKind, setActiveServiceKind] = useState<string | null>(null);
   const notify = useNotificationStore();
+  const hasSearchQuery = searchQuery.trim().length > 0 || modelSearchQuery.trim().length > 0;
   const sectionCategoryAliases: Record<string, string> = {
     cloud: "cloudagent",
     noauth: "no-auth",
@@ -214,7 +206,9 @@ export default function ProvidersPage() {
   };
   const showSection = (category: string) => {
     const normalizedCategory = sectionCategoryAliases[category] ?? category;
-    return shouldShowProviderSection(normalizedCategory, activeCategory, showFreeOnly);
+    if (showFreeOnly) return normalizedCategory === "free";
+    if (hasSearchQuery && !activeCategory) return normalizedCategory !== "free";
+    return !activeCategory || activeCategory === normalizedCategory;
   };
   const t = useTranslations("providers");
   const tc = useTranslations("common");
@@ -328,13 +322,22 @@ export default function ProvidersPage() {
       connectionMatchesProviderCard(c, providerId, authType)
     );
 
-    const connected = providerConnections.filter((connection) =>
-      isProviderConnectionConnected(connection)
-    ).length;
+    // Helper: check if connection is effectively active (cooldown expired)
+    const getEffectiveStatus = (conn) => {
+      const isCooldown =
+        conn.rateLimitedUntil && new Date(conn.rateLimitedUntil).getTime() > Date.now();
+      return conn.testStatus === "unavailable" && !isCooldown ? "active" : conn.testStatus;
+    };
 
-    const errorConns = providerConnections.filter((connection) =>
-      isProviderConnectionErrored(connection)
-    );
+    const connected = providerConnections.filter((c) => {
+      const status = getEffectiveStatus(c);
+      return status === "active" || status === "success";
+    }).length;
+
+    const errorConns = providerConnections.filter((c) => {
+      const status = getEffectiveStatus(c);
+      return status === "error" || status === "expired" || status === "unavailable";
+    });
 
     const error = errorConns.length;
     const total = providerConnections.length;
@@ -494,8 +497,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const rawNoAuthEntriesAll = buildStaticProviderEntries("no-auth", getProviderStats);
@@ -512,8 +514,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const apiKeyProviderEntriesAll = buildStaticProviderEntries("apikey", getProviderStats);
@@ -531,8 +532,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
   const aggregatorProviderEntriesAll = apiKeyProviderEntriesAll.filter((entry) =>
     AGGREGATOR_PROVIDER_IDS.has(entry.providerId)
@@ -543,8 +543,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
   const imageProviderEntriesAll = apiKeyProviderEntriesAll.filter((entry) =>
     IMAGE_ONLY_PROVIDER_IDS.has(entry.providerId)
@@ -555,8 +554,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
   const enterpriseProviderEntriesAll = apiKeyProviderEntriesAll.filter((entry) =>
     ENTERPRISE_CLOUD_PROVIDER_IDS.has(entry.providerId)
@@ -567,8 +565,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
   const videoProviderEntriesAll = apiKeyProviderEntriesAll.filter((entry) =>
     VIDEO_PROVIDER_IDS.has(entry.providerId)
@@ -579,8 +576,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
   const embeddingRerankProviderEntriesAll = apiKeyProviderEntriesAll.filter((entry) =>
     EMBEDDING_RERANK_PROVIDER_IDS.has(entry.providerId)
@@ -591,8 +587,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const webCookieProviderEntriesAll = buildStaticProviderEntries("web-cookie", getProviderStats);
@@ -602,8 +597,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const localProviderEntriesAll = buildStaticProviderEntries("local", getProviderStats);
@@ -613,8 +607,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const searchProviderEntriesAll = buildStaticProviderEntries("search", getProviderStats);
@@ -624,8 +617,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const audioProviderEntriesAll = buildStaticProviderEntries("audio", getProviderStats);
@@ -635,8 +627,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const cloudAgentProviderEntriesAll = buildStaticProviderEntries("cloud-agent", getProviderStats);
@@ -646,8 +637,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const upstreamProxyEntriesAll = buildStaticProviderEntries("upstream-proxy", getProviderStats);
@@ -657,8 +647,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const compatibleProviderEntriesAll = [
@@ -690,8 +679,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const staticProviderEntriesAll = dedupeProviderEntries([
@@ -716,8 +704,7 @@ export default function ProvidersPage() {
     searchQuery,
     undefined,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   // IDE providers: subset of oauth/apikey providers that are editors/IDEs with
@@ -732,8 +719,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const oauthOnlyEntriesAll = oauthProviderEntriesAll
@@ -753,8 +739,7 @@ export default function ProvidersPage() {
     searchQuery,
     showFreeOnly,
     modelSearchQuery,
-    activeServiceKind,
-    liveModelsByProviderId
+    activeServiceKind
   );
 
   const compactProviderEntries = buildCompactProviderEntriesForPage({
@@ -855,7 +840,6 @@ export default function ProvidersPage() {
         }}
         onDisplayModeChange={setProviderDisplayMode}
         onNewProvider={() => router.push("/dashboard/providers/new")}
-        onImportFromFile={() => setShowImportFromFileModal(true)}
         searchQuery={searchQuery}
         setModelSearchQuery={setModelSearchQuery}
         setSearchQuery={setSearchQuery}
@@ -1778,11 +1762,6 @@ export default function ProvidersPage() {
           }}
         />
       )}
-      <ImportProvidersFromFileModal
-        isOpen={showImportFromFileModal}
-        onClose={() => setShowImportFromFileModal(false)}
-        onImported={async () => setConnections((await loadProviderPageData()).connections)}
-      />
       {/* Test Results Modal */}
       {testResults && (
         <div

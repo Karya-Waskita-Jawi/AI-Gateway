@@ -1,5 +1,4 @@
 import { FETCH_TIMEOUT_MS } from "../../config/constants.ts";
-import { getModelTimeoutMs } from "../../config/providerModels.ts";
 import {
   getLoggedInputTokens,
   getLoggedOutputTokens,
@@ -63,16 +62,7 @@ export function computeBillableTokens(usage: unknown): number {
   return getLoggedInputTokens(usage) + getLoggedOutputTokens(usage) + getReasoningTokens(usage);
 }
 
-/** Resolves the model-level `timeoutMs` registry override, when both
- *  `provider` and `model` are known and the model registers one (#6354). */
-function resolveModelTimeoutOverride(provider?: string, model?: string): number | undefined {
-  if (!provider || !model) return undefined;
-  const override = getModelTimeoutMs(provider, model);
-  if (typeof override !== "number" || !Number.isFinite(override)) return undefined;
-  return Math.max(0, Math.floor(override));
-}
-
-function resolveProviderTimeoutMs(executor: unknown): number {
+export function getExecutorTimeoutMs(executor: unknown): number {
   const getTimeoutMs = (executor as { getTimeoutMs?: () => unknown } | null)?.getTimeoutMs;
   if (typeof getTimeoutMs !== "function") return FETCH_TIMEOUT_MS;
 
@@ -83,19 +73,6 @@ function resolveProviderTimeoutMs(executor: unknown): number {
   } catch {
     return FETCH_TIMEOUT_MS;
   }
-}
-
-/**
- * Resolves the upstream header-response timeout in precedence order:
- * model-level override (registry `RegistryModel.timeoutMs`) → provider-level
- * override (`executor.getTimeoutMs()`) → global `FETCH_TIMEOUT_MS` default.
- * `provider`/`model` are optional so existing single-argument call sites
- * keep resolving to the provider/global chain unchanged (#6354).
- */
-export function getExecutorTimeoutMs(executor: unknown, provider?: string, model?: string): number {
-  const modelOverride = resolveModelTimeoutOverride(provider, model);
-  if (modelOverride !== undefined) return modelOverride;
-  return resolveProviderTimeoutMs(executor);
 }
 
 export function normalizeExecutorResult(
@@ -134,7 +111,7 @@ export async function executeWithUpstreamStartTimeout<T>({
   log?: { warn?: (tag: string, message: string) => void } | null;
   execute: (signal: AbortSignal) => Promise<T>;
 }): Promise<T> {
-  const timeoutMs = getExecutorTimeoutMs(executor, provider, model);
+  const timeoutMs = getExecutorTimeoutMs(executor);
   if (timeoutMs <= 0) return execute(signal);
   if (signal.aborted) throw createAbortError(signal);
 

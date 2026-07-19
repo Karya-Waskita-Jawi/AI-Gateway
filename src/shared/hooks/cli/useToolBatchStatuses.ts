@@ -15,12 +15,11 @@ export function useToolBatchStatuses(): UseToolBatchStatusesResult {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStatuses = useCallback(async (forceRefresh = false) => {
+  const fetchStatuses = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `/api/cli-tools/all-statuses${forceRefresh ? "?refresh=true" : ""}`;
-      const res = await fetch(url);
+      const res = await fetch("/api/cli-tools/all-statuses");
       if (!res.ok) {
         const text = await res.text().catch(() => String(res.status));
         setError(`HTTP ${res.status}: ${text.slice(0, 200)}`);
@@ -38,10 +37,6 @@ export function useToolBatchStatuses(): UseToolBatchStatusesResult {
     }
   }, []);
 
-  const refetch = useCallback(() => {
-    void fetchStatuses(true);
-  }, [fetchStatuses]);
-
   useEffect(() => {
     void fetchStatuses();
 
@@ -55,5 +50,5 @@ export function useToolBatchStatuses(): UseToolBatchStatusesResult {
     };
   }, [fetchStatuses]);
 
-  return { statuses, loading, error, refetch };
+  return { statuses, loading, error, refetch: fetchStatuses };
 }

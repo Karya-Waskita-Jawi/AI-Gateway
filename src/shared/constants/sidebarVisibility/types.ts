@@ -34,7 +34,8 @@ export const HIDEABLE_SIDEBAR_ITEM_IDS = [
   // OmniProxy > Integrations
   "api-endpoints",
   "webhooks",
-  // OmniProxy — proxy tools
+  // OmniProxy — proxy
+  "proxy",
   "mitm-proxy",
   "1proxy",
   // Analytics
@@ -105,11 +106,6 @@ export const HIDEABLE_SIDEBAR_ITEM_IDS = [
 
 export type HideableSidebarItemId = (typeof HIDEABLE_SIDEBAR_ITEM_IDS)[number];
 
-/** Sidebar entries that are intentionally always available and cannot be hidden by presets. */
-export type AlwaysVisibleSidebarItemId = "proxy";
-
-export type SidebarItemId = HideableSidebarItemId | AlwaysVisibleSidebarItemId;
-
 export type SidebarSectionId =
   | "home"
   | "omni-proxy"
@@ -123,7 +119,7 @@ export type SidebarSectionId =
   | "help";
 
 export interface SidebarItemDefinition {
-  id: SidebarItemId;
+  id: HideableSidebarItemId;
   href: string;
   i18nKey: string;
   subtitleKey?: string;

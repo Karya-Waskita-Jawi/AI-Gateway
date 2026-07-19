@@ -1,20 +1,27 @@
+import { KIMI_CODING_CONFIG } from "../constants/oauth";
 import { randomUUID } from "crypto";
 import fs from "fs";
-import { hostname, release } from "os";
+import { arch, hostname, release, type as osType, version as osVersion } from "os";
 import path from "path";
-import {
-  buildKimiCodeIdentityHeaders,
-  normalizeKimiDeviceId,
-  sanitizeKimiHeaderValue,
-} from "@omniroute/open-sse/config/providers/registry/kimi/coding/runtime.ts";
-import { getKimiDeviceModel } from "@omniroute/open-sse/utils/kimiDevice.ts";
 import { resolveDataDir } from "../../dataPaths";
-import { KIMI_CODING_CONFIG } from "../constants/oauth";
 
+const PLATFORM = "kimi_cli";
+const VERSION = process.env.KIMI_CLI_VERSION || "1.36.0";
 const DEVICE_ID_FILE = "kimi-coding-device-id";
 
+function sanitizeHeaderValue(value, fallback = "unknown") {
+  const text = String(value ?? "").trim();
+  if (!text) return fallback;
+
+  return text.replace(/[^\x20-\x7e]/g, "").trim() || fallback;
+}
+
+function getDeviceModel() {
+  return [osType() || process.platform, release(), arch()].filter(Boolean).join(" ");
+}
+
 function generateDeviceId() {
-  return randomUUID();
+  return randomUUID().replace(/-/g, "");
 }
 
 function getKimiDeviceId() {
@@ -26,7 +33,7 @@ function getKimiDeviceId() {
     const devicePath = path.join(oauthDir, DEVICE_ID_FILE);
     if (fs.existsSync(devicePath)) {
       const existing = fs.readFileSync(devicePath, "utf8").trim();
-      if (existing) return normalizeKimiDeviceId(existing);
+      if (existing) return existing;
     }
 
     fs.mkdirSync(oauthDir, { recursive: true });
@@ -46,12 +53,12 @@ function getKimiOAuthHeaders() {
   return {
     "Content-Type": "application/x-www-form-urlencoded",
     Accept: "application/json",
-    ...buildKimiCodeIdentityHeaders({
-      deviceId: getKimiDeviceId(),
-      deviceName: hostname(),
-      deviceModel: getKimiDeviceModel(),
-      osVersion: release(),
-    }),
+    "X-Msh-Platform": PLATFORM,
+    "X-Msh-Version": VERSION,
+    "X-Msh-Device-Name": sanitizeHeaderValue(hostname()),
+    "X-Msh-Device-Model": sanitizeHeaderValue(getDeviceModel()),
+    "X-Msh-Os-Version": sanitizeHeaderValue(osVersion()),
+    "X-Msh-Device-Id": sanitizeHeaderValue(getKimiDeviceId()),
   };
 }
 
@@ -73,16 +80,12 @@ export const kimiCoding = {
     }
 
     const data = await response.json();
-    if (!data?.device_code) throw new Error("Device authorization response missing device_code");
-    if (!data?.user_code) throw new Error("Device authorization response missing user_code");
-    if (!data?.verification_uri_complete) {
-      throw new Error("Device authorization response missing verification_uri_complete");
-    }
+    const verificationUri = data.verification_uri || "https://www.kimi.com/code/authorize_device";
     return {
       device_code: data.device_code,
       user_code: data.user_code,
-      verification_uri: data.verification_uri || "",
-      verification_uri_complete: data.verification_uri_complete,
+      verification_uri: verificationUri,
+      verification_uri_complete: data.verification_uri_complete || verificationUri,
       expires_in: data.expires_in,
       interval: data.interval || 5,
     };
@@ -124,9 +127,9 @@ export const kimiCoding = {
     // pipeline treats each refresh as a new device.
     providerSpecificData: {
       deviceId: getKimiDeviceId(),
-      deviceName: sanitizeKimiHeaderValue(hostname()),
-      deviceModel: sanitizeKimiHeaderValue(getKimiDeviceModel()),
-      osVersion: sanitizeKimiHeaderValue(release()),
+      deviceName: sanitizeHeaderValue(hostname()),
+      deviceModel: sanitizeHeaderValue(getDeviceModel()),
+      osVersion: sanitizeHeaderValue(osVersion()),
     },
   }),
 };

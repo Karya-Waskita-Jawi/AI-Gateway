@@ -138,12 +138,9 @@ export function persistAttemptLogs(args: PersistAttemptLogsArgs, ctx: PersistAtt
     });
   }
 
-  const capturedPipeline = reqLogger?.getPipelinePayloads?.() ?? null;
   const pipelinePayloads = detailedLoggingEnabled
-    ? (capturedPipeline ?? {})
-    : capturedPipeline?.routeDecision
-      ? { routeDecision: capturedPipeline.routeDecision }
-      : null;
+    ? (reqLogger?.getPipelinePayloads?.() ?? {})
+    : null;
 
   if (pipelinePayloads) {
     if (providerRequest !== undefined && !pipelinePayloads.providerRequest) {

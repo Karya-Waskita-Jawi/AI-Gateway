@@ -110,7 +110,6 @@ const TOTAL_MCP_TOOL_COUNT = countUniqueMcpTools({
   pluginTools,
   notionTools,
   obsidianTools,
-  compressionTools,
 });
 
 type JsonRecord = Record<string, unknown>;

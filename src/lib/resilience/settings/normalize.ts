@@ -107,10 +107,6 @@ export function normalizeRequestQueueSettings(
     min: 1,
     max: 24 * 60 * 60 * 1000,
   });
-  const maxQueueDepth = toInteger(record.maxQueueDepth, fallback.maxQueueDepth, {
-    min: 0,
-    max: 100_000,
-  });
 
   return {
     autoEnableApiKeyProviders: toBoolean(
@@ -121,7 +117,6 @@ export function normalizeRequestQueueSettings(
     minTimeBetweenRequestsMs,
     concurrentRequests,
     maxWaitMs,
-    maxQueueDepth,
   };
 }
 

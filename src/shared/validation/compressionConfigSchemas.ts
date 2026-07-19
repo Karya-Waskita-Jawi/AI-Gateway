@@ -314,7 +314,6 @@ export const compressionSettingsUpdateSchema = z
     ultra: ultraConfigSchema.optional(),
     contextBudget: contextBudgetConfigSchema.optional(),
     contextEditing: contextEditingConfigSchema.optional(),
-    liveZone: z.object({ enabled: z.boolean() }).strict().optional(),
     engines: z.record(z.string(), engineToggleSchema).optional(),
     enginesExplicit: z.boolean().optional(),
     activeComboId: z.string().nullable().optional(),

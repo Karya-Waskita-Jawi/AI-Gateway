@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Card,
@@ -1846,7 +1846,7 @@ export default function EvalsTab() {
   );
 }
 
-const HeroSection = memo(function HeroSection({ t }: { t: (key: string, values?: Record<string, unknown>) => string }) {
+function HeroSection({ t }: { t: (key: string, values?: Record<string, unknown>) => string }) {
   return (
     <Card className="p-0 overflow-hidden">
       <div
@@ -1892,7 +1892,7 @@ const HeroSection = memo(function HeroSection({ t }: { t: (key: string, values?:
       </div>
     </Card>
   );
-});
+}
 
 function SuiteBuilderModal({
   draft,

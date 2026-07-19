@@ -88,7 +88,6 @@ type CallLogSummaryRow = {
   has_response_body: number | null;
   has_pipeline_details: number | null;
   request_summary: string | null;
-  provider_node_name?: string | null;
   provider_node_prefix?: string | null;
   resolved_account?: string | null;
   correlation_id?: string | null;
@@ -472,27 +471,9 @@ export function trimCallLogsToMaxRows(maxRows = getCallLogsTableMaxRows()) {
   return { deletedRows, deletedArtifacts };
 }
 
-function resolveProviderDisplay(
-  provider: string | null,
-  nodeName: string | null,
-  nodePrefix: string | null
-): string | null {
-  const rawProvider = toStringOrNull(provider);
-  if (!rawProvider) return null;
-
-  const name = toStringOrNull(nodeName)?.trim();
-  if (name) return name;
-
-  const prefix = toStringOrNull(nodePrefix)?.trim();
-  if (prefix) return prefix;
-
-  return null;
-}
-
 function mapSummaryRow(row: CallLogSummaryRow) {
   const detailState = normalizeDetailState(row.detail_state);
   const provider = row.provider;
-  const nodeName = row.provider_node_name ?? null;
   const nodePrefix = row.provider_node_prefix ?? null;
   return {
     id: row.id,
@@ -503,7 +484,6 @@ function mapSummaryRow(row: CallLogSummaryRow) {
     model: row.model,
     requestedModel: applyNodePrefix(row.requested_model, provider, nodePrefix),
     provider,
-    providerDisplay: resolveProviderDisplay(provider, nodeName, nodePrefix),
     account: row.resolved_account || row.account,
     connectionId: row.connection_id,
     duration: toNumber(row.duration),
@@ -761,7 +741,7 @@ export async function getCallLogs(filter: any = {}) {
   const db = getDbInstance();
   let sql = `
     SELECT cl.*,
-      pn.name AS provider_node_name, pn.prefix AS provider_node_prefix,
+      pn.prefix AS provider_node_prefix,
       ${RESOLVED_ACCOUNT_SQL} AS resolved_account
     FROM call_logs cl
     LEFT JOIN provider_nodes pn ON pn.id = cl.provider
@@ -848,7 +828,6 @@ export async function getCallLogById(id: string) {
   const row = db
     .prepare(
       `SELECT cl.*,
-        pn.name AS provider_node_name,
         pn.prefix AS provider_node_prefix,
         ${RESOLVED_ACCOUNT_SQL} AS resolved_account
        FROM call_logs cl

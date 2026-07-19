@@ -10,7 +10,6 @@
 import { useEffect, useState } from "react";
 import { STACKED_PIPELINE_ENGINE_INTENSITIES } from "@/shared/validation/compressionConfigSchemas";
 import { CompressionPipelineEditor } from "@/shared/components/compression/CompressionPipelineEditor";
-import { ComboCompressionModeSelect } from "@/shared/components/compression/ComboCompressionModeSelect";
 import CompressionHub from "./CompressionHub";
 
 type PipelineStep = { engine: string; intensity?: string };
@@ -24,11 +23,7 @@ type CompressionCombo = {
   outputModeIntensity: string;
   isDefault: boolean;
 };
-type RoutingCombo = {
-  id?: string;
-  name?: string;
-  config?: { compressionMode?: string } | null;
-};
+type RoutingCombo = { id?: string; name?: string };
 type LanguagePack = { language: string; ruleCount: number };
 
 const EMPTY_PIPELINE: PipelineStep[] = [
@@ -54,7 +49,6 @@ function NamedCombosManager() {
   const [assignmentIds, setAssignmentIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [activeComboId, setActiveComboId] = useState<string | null>(null);
-  const [compressionEnabled, setCompressionEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = () => {
@@ -76,10 +70,7 @@ function NamedCombosManager() {
       .catch(() => {});
     fetch("/api/settings/compression")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        setActiveComboId(data?.activeComboId ?? null);
-        setCompressionEnabled(Boolean(data?.enabled));
-      })
+      .then((data) => setActiveComboId(data?.activeComboId ?? null))
       .catch(() => {});
   }, []);
 
@@ -264,22 +255,14 @@ function NamedCombosManager() {
                   const id = combo.id ?? combo.name ?? "";
                   if (!id) return null;
                   return (
-                    <div key={id} className="flex items-center justify-between gap-2">
-                      <label className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                        <span className="truncate">{combo.name ?? id}</span>
-                        <input
-                          type="checkbox"
-                          checked={assignmentIds.includes(id)}
-                          onChange={(event) => toggleAssignment(id, event.target.checked)}
-                        />
-                      </label>
-                      <ComboCompressionModeSelect
-                        combo={{ id, config: combo.config }}
-                        disabled={!compressionEnabled}
-                        title="Compression override"
-                        className="w-24 shrink-0 rounded-lg border border-border bg-bg px-2 py-1 text-xs text-text-main disabled:opacity-50"
+                    <label key={id} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{combo.name ?? id}</span>
+                      <input
+                        type="checkbox"
+                        checked={assignmentIds.includes(id)}
+                        onChange={(event) => toggleAssignment(id, event.target.checked)}
                       />
-                    </div>
+                    </label>
                   );
                 })
               )}

@@ -131,11 +131,6 @@ export interface ContextEditingConfig {
   enabled: boolean;
 }
 
-/** Cache-aligned compression: freeze a previously transformed prefix and process only new items. */
-export interface LiveZoneConfig {
-  enabled: boolean;
-}
-
 export interface CompressionPipelineStep {
   engine: CompressionEngineId;
   intensity?: CavemanIntensity | RtkIntensity;
@@ -198,8 +193,6 @@ export interface CompressionConfig {
   ultra?: UltraConfig;
   /** Provider-delegated context editing (Claude/Anthropic only). */
   contextEditing?: ContextEditingConfig;
-  /** Opt-in cache-aligned live-zone compression (default disabled). */
-  liveZone?: LiveZoneConfig;
   /** Per-engine opt-in toggles for the config panel. */
   engines: Record<string, EngineToggle>;
   /** Active combo preset id, or null if none selected. */
@@ -301,11 +294,6 @@ export interface CompressionStats {
   }>;
   /** Present only when QuantumLock stabilized ≥1 fragment this run. */
   quantumLock?: QuantumLockStats;
-  liveZone?: {
-    cacheHit: boolean;
-    frozenItems: number;
-    liveItems: number;
-  };
 }
 
 export interface CompressionResult {
@@ -333,7 +321,6 @@ export const DEFAULT_COMPRESSION_CONFIG: CompressionConfig = {
   activeComboId: null,
   ultraEngine: "heuristic",
   ultraSlmPrewarm: false,
-  liveZone: { enabled: false },
 };
 
 export const DEFAULT_CAVEMAN_CONFIG: CavemanConfig = {

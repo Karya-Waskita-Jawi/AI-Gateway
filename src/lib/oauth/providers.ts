@@ -110,7 +110,7 @@ export function getProvider(name) {
  */
 export function generateAuthData(providerName, redirectUri) {
   const provider = getProvider(providerName);
-  const pkce = generatePKCE(provider.pkceVerifierBytes || 32);
+  const pkce = generatePKCE();
   let codeVerifier = pkce.codeVerifier;
   const { codeChallenge, state } = pkce;
 
@@ -136,7 +136,6 @@ export function generateAuthData(providerName, redirectUri) {
       flowType: provider.flowType,
       fixedPort: provider.fixedPort,
       callbackPath: provider.callbackPath || "/callback",
-      callbackHost: provider.callbackHost || "localhost",
       supported: false,
       error,
     };
@@ -177,7 +176,6 @@ export function generateAuthData(providerName, redirectUri) {
     flowType: provider.flowType,
     fixedPort: provider.fixedPort,
     callbackPath: provider.callbackPath || "/callback",
-    callbackHost: provider.callbackHost || "localhost",
   };
 }
 

@@ -76,8 +76,9 @@ export function getAllToolDefinitions(): ToolCatalogEntry[] {
     pluginTools,
     notionTools,
     obsidianTools,
-    // Keep the concrete handler collection in the catalog as a parity guard. Canonical CCR
-    // definitions now live in MCP_TOOLS too; deduplication below keeps each name visible once.
+    // compressionTools holds omniroute_ccr_retrieve, which is NOT in MCP_TOOLS — without it
+    // a `tool_search("compression")` would miss that tool. The other 5 overlap MCP_TOOLS and
+    // are resolved by the dedup-by-name below (first wins).
     compressionTools,
   ];
 

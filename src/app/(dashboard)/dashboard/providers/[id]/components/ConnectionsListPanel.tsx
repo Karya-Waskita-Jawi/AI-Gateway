@@ -7,8 +7,6 @@ import { pickDisplayValue } from "@/shared/utils/maskEmail";
 import { readBooleanToggle, providerCountText } from "../providerPageHelpers";
 import { compareTr } from "@/shared/utils/turkishText";
 import type { CodexGlobalServiceMode } from "@/lib/providers/codexFastTier";
-import { supportsProviderQuota } from "@/shared/utils/providerQuotaVisibility";
-import type { ConnectionDeleteConfirmState } from "../hooks/useConnectionDeleteConfirm";
 
 type ConnectionsListPanelProps = {
   connections: ConnectionRowConnection[];
@@ -39,10 +37,9 @@ type ConnectionsListPanelProps = {
   setPage: React.Dispatch<React.SetStateAction<number>>;
   setHealthFilter: (v: string) => void;
   // Callbacks from useProviderConnections
-  deleteConfirm: ConnectionDeleteConfirmState;
+  handleDelete: (id: string) => void;
   handleUpdateConnectionStatus: (id: string, isActive: boolean) => void;
   handleToggleRateLimit: (id: string, enabled: boolean) => void;
-  handleToggleQuotaVisibility: (id: string, visible: boolean) => void;
   handleToggleClaudeExtraUsage: (id: string, enabled: boolean) => void;
   handleToggleCliproxyapiMode: (id: string, enabled: boolean) => void;
   handleToggleCodexLimit: (id: string, type: "use5h" | "useWeekly", enabled: boolean) => void;
@@ -69,14 +66,6 @@ type ConnectionsListPanelProps = {
   gateConnectionFlow: (callback: () => void) => void;
   t: any; // ProviderMessageTranslator
 };
-
-function quotaVisibilityHandler(
-  supported: boolean,
-  connectionId: string,
-  toggle: (id: string, visible: boolean) => void
-) {
-  return supported ? (visible: boolean) => toggle(connectionId, visible) : undefined;
-}
 
 export default function ConnectionsListPanel({
   connections,
@@ -105,10 +94,9 @@ export default function ConnectionsListPanel({
   setSelectedIds,
   setPage,
   setHealthFilter,
-  deleteConfirm,
+  handleDelete,
   handleUpdateConnectionStatus,
   handleToggleRateLimit,
-  handleToggleQuotaVisibility,
   handleToggleClaudeExtraUsage,
   handleToggleCliproxyapiMode,
   handleToggleCodexLimit,
@@ -135,7 +123,6 @@ export default function ConnectionsListPanel({
   t,
 }: ConnectionsListPanelProps) {
   const sorted = [...connections].sort((a, b) => (a.priority || 0) - (b.priority || 0));
-  const quotaSupported = supportsProviderQuota(providerId);
   const hasAnyTag = sorted.some((c) => c.providerSpecificData?.tag as string | undefined);
   const allSelected = selectedIds.size === connections.length && connections.length > 0;
   const someSelected = selectedIds.size > 0 && selectedIds.size < connections.length;
@@ -344,11 +331,6 @@ export default function ConnectionsListPanel({
                 onMoveDown={() => handleSwapPriority(conn, sorted[index + 1])}
                 onToggleActive={(isActive) => handleUpdateConnectionStatus(conn.id, isActive)}
                 onToggleRateLimit={(enabled) => handleToggleRateLimit(conn.id, enabled)}
-                onToggleQuotaVisibility={quotaVisibilityHandler(
-                  quotaSupported,
-                  conn.id,
-                  handleToggleQuotaVisibility
-                )}
                 onToggleClaudeExtraUsage={(enabled) =>
                   handleToggleClaudeExtraUsage(conn.id, enabled)
                 }
@@ -363,12 +345,7 @@ export default function ConnectionsListPanel({
                 onRetest={() => handleRetestConnection(conn.id)}
                 isRetesting={retestingId === conn.id}
                 onEdit={() => onOpenEditModal(conn)}
-                onDelete={() =>
-                  deleteConfirm.request(
-                    conn.id,
-                    pickDisplayValue([conn.name, conn.email], emailsVisible, conn.id)
-                  )
-                }
+                onDelete={() => handleDelete(conn.id)}
                 onReauth={
                   conn.authType === "oauth"
                     ? () => gateConnectionFlow(() => onOpenOAuth(conn))
@@ -521,11 +498,6 @@ export default function ConnectionsListPanel({
                     onMoveDown={() => handleSwapPriority(conn, sorted[sorted.indexOf(conn) + 1])}
                     onToggleActive={(isActive) => handleUpdateConnectionStatus(conn.id, isActive)}
                     onToggleRateLimit={(enabled) => handleToggleRateLimit(conn.id, enabled)}
-                    onToggleQuotaVisibility={quotaVisibilityHandler(
-                      quotaSupported,
-                      conn.id,
-                      handleToggleQuotaVisibility
-                    )}
                     onToggleClaudeExtraUsage={(enabled) =>
                       handleToggleClaudeExtraUsage(conn.id, enabled)
                     }
@@ -542,12 +514,7 @@ export default function ConnectionsListPanel({
                     onRetest={() => handleRetestConnection(conn.id)}
                     isRetesting={retestingId === conn.id}
                     onEdit={() => onOpenEditModal(conn)}
-                    onDelete={() =>
-                      deleteConfirm.request(
-                        conn.id,
-                        pickDisplayValue([conn.name, conn.email], emailsVisible, conn.id)
-                      )
-                    }
+                    onDelete={() => handleDelete(conn.id)}
                     onReauth={
                       conn.authType === "oauth"
                         ? () => gateConnectionFlow(() => onOpenOAuth(conn))

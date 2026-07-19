@@ -24,7 +24,9 @@ export interface DatabaseStats {
   cacheSize: number;
 }
 
-export function getDatabaseStats(db: SqliteAdapter = getDbInstance()): DatabaseStats {
+export function getDatabaseStats(): DatabaseStats {
+  const db = getDbInstance();
+
   const pageSize = db.pragma("page_size", { simple: true }) as number;
   const pageCount = db.pragma("page_count", { simple: true }) as number;
   const cacheSize = db.pragma("cache_size", { simple: true }) as number;
@@ -37,18 +39,9 @@ export function getDatabaseStats(db: SqliteAdapter = getDbInstance()): DatabaseS
     .all() as Array<{ name: string }>;
 
   const tableStats = tables.map((table) => {
-    let rowCount = 0;
-    try {
-      const quotedName = `"${table.name.replaceAll('"', '""')}"`;
-      const row = db.prepare(`SELECT COUNT(*) as count FROM ${quotedName}`).get() as
-        { count: number } | undefined;
-      rowCount = row?.count ?? 0;
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.startsWith("no such module:")) {
-        throw error;
-      }
-      // Optional virtual-table modules may be unavailable on this connection.
-    }
+    const rowCount = db.prepare(`SELECT COUNT(*) as count FROM ${table.name}`).get() as {
+      count: number;
+    };
 
     const tableSize = db
       .prepare(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
@@ -56,7 +49,7 @@ export function getDatabaseStats(db: SqliteAdapter = getDbInstance()): DatabaseS
 
     return {
       name: table.name,
-      rowCount,
+      rowCount: rowCount.count,
       size: tableSize?.size || 0,
     };
   });

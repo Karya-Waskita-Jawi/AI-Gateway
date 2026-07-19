@@ -78,9 +78,7 @@ test("normalizes user image_url content parts to input_image", () => {
     {
       type: "message",
       role: "user",
-      content: [
-        { type: "image_url", image_url: { url: "https://example.com/u.png", detail: "high" } },
-      ],
+      content: [{ type: "image_url", image_url: { url: "https://example.com/u.png", detail: "high" } }],
     },
   ];
   const result = sanitizeResponsesInputItems(items) as Array<Record<string, unknown>>;
@@ -113,7 +111,7 @@ test("normalizes assistant image content parts to output_text", () => {
   });
 });
 
-test("normalizes replayed Responses output image parts to input_image", () => {
+test("normalizes replayed Responses output image parts to output_text", () => {
   const items = [
     {
       type: "message",
@@ -125,57 +123,9 @@ test("normalizes replayed Responses output image parts to input_image", () => {
   assert.deepEqual(result[0], {
     type: "message",
     role: "assistant",
-    output: [{ type: "input_image", image_url: "https://example.com/output.png" }],
+    output: [{ type: "output_text", text: "[Image: https://example.com/output.png]" }],
   });
-  assert.equal(JSON.stringify(result).includes('"type":"image_url"'), false);
-});
-
-test("normalizes nested output_text parts to input_text", () => {
-  const items = [
-    {
-      type: "function_call_output",
-      call_id: "call_2",
-      output: [
-        {
-          type: "output_text",
-          text: "tool result",
-          annotations: [],
-          logprobs: [],
-          obfuscation: "opaque",
-        },
-      ],
-    },
-  ];
-  const result = sanitizeResponsesInputItems(items) as Array<Record<string, unknown>>;
-  assert.deepEqual(result[0], {
-    type: "function_call_output",
-    call_id: "call_2",
-    output: [{ type: "input_text", text: "tool result" }],
-  });
-});
-
-test("normalizes nested refusal parts to input_text", () => {
-  const items = [
-    {
-      type: "function_call_output",
-      call_id: "call_3",
-      output: [
-        {
-          type: "refusal",
-          refusal: "I can't help with that.",
-          annotations: [],
-          logprobs: [],
-          obfuscation: "opaque",
-        },
-      ],
-    },
-  ];
-  const result = sanitizeResponsesInputItems(items) as Array<Record<string, unknown>>;
-  assert.deepEqual(result[0], {
-    type: "function_call_output",
-    call_id: "call_3",
-    output: [{ type: "input_text", text: "I can't help with that." }],
-  });
+  assert.equal(JSON.stringify(result).includes('"image_url"'), false);
 });
 
 test("normalizes function_call_output image output parts to input_image", () => {
@@ -193,20 +143,4 @@ test("normalizes function_call_output image output parts to input_image", () => 
     output: [{ type: "input_image", image_url: "https://example.com/tool.png" }],
   });
   assert.equal(JSON.stringify(result).includes('"type":"image_url"'), false);
-});
-
-test("preserves custom_tool_call_output input content parts", () => {
-  const items = [
-    {
-      type: "custom_tool_call_output",
-      call_id: "call_2",
-      output: [
-        { type: "input_text", text: "image tool output" },
-        { type: "input_image", image_url: "data:image/png;base64,AAAA" },
-      ],
-    },
-  ];
-  const result = sanitizeResponsesInputItems(items) as Array<Record<string, unknown>>;
-  assert.deepEqual(result[0], items[0]);
-  assert.equal(JSON.stringify(result).includes('"type":"output_text"'), false);
 });

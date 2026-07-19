@@ -15,20 +15,12 @@ import {
   resolvePayloadRuleProtocols,
 } from "../../services/payloadRules.ts";
 import { getEffectiveToolLimit, getKnownToolLimit } from "../../services/toolLimitDetector.ts";
-import {
-  providerSupportsCaching,
-  resolveConnectionCacheOverride,
-  type ConnectionCacheOverride,
-} from "../../utils/cacheControlPolicy.ts";
+import { providerSupportsCaching } from "../../utils/cacheControlPolicy.ts";
 import { FORMATS } from "../../translator/formats.ts";
-import { sanitizeRequestForResolvedTarget } from "../../services/targetRequestSanitizer.ts";
 
 type LoggerLike = { debug?: (...args: unknown[]) => void } | null | undefined;
 type Body = Record<string, unknown>;
-type CredentialsLike =
-  | { apiKey?: unknown; accessToken?: unknown; providerSpecificData?: Record<string, unknown> | null }
-  | null
-  | undefined;
+type CredentialsLike = { apiKey?: unknown; accessToken?: unknown } | null | undefined;
 
 function buildAppliedRulesSummary(
   applied: Array<{ type: string; path: string; value?: unknown }>
@@ -108,12 +100,11 @@ function backfillQwenOAuthUser(
 async function injectPromptCacheKey(
   bodyToSend: Body,
   provider: string | null | undefined,
-  targetFormat: string,
-  connectionCacheOverride: ConnectionCacheOverride | null
+  targetFormat: string
 ): Promise<Body> {
   if (
     targetFormat === FORMATS.OPENAI &&
-    providerSupportsCaching(provider, undefined, connectionCacheOverride) &&
+    providerSupportsCaching(provider) &&
     !bodyToSend.prompt_cache_key &&
     Array.isArray(bodyToSend.messages) &&
     !["nvidia", "codex", "xai"].includes(provider)
@@ -169,15 +160,9 @@ export async function prepareUpstreamBody(opts: {
     );
   }
 
-  bodyToSend = sanitizeRequestForResolvedTarget(bodyToSend, {
-    provider,
-    model: payloadRuleModel,
-    log,
-  });
   bodyToSend = truncateToolList(bodyToSend, provider, bypassDefaultToolLimit ?? false, log);
   bodyToSend = backfillQwenOAuthUser(bodyToSend, provider, credentials, log);
-  const connectionCacheOverride = resolveConnectionCacheOverride(credentials?.providerSpecificData);
-  bodyToSend = await injectPromptCacheKey(bodyToSend, provider, targetFormat, connectionCacheOverride);
+  bodyToSend = await injectPromptCacheKey(bodyToSend, provider, targetFormat);
 
   return bodyToSend;
 }

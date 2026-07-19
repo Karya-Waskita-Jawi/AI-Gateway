@@ -5,7 +5,6 @@ import { supportsClaudeMaxEffort, supportsXHighEffort } from "../../config/provi
 import { adjustMaxTokens } from "../helpers/maxTokensHelper.ts";
 import { sanitizeToolId } from "../helpers/schemaCoercion.ts";
 import { safeParseJSON } from "../helpers/jsonUtil.ts";
-import { applyKimiCodingThinking } from "../helpers/claudeHelper.ts";
 import { DEFAULT_THINKING_CLAUDE_SIGNATURE } from "../../config/defaultThinkingSignature.ts";
 import { isAdaptiveThinkingOnly } from "../../../src/shared/constants/modelSpecs.ts";
 import { fitThinkingToMaxTokens } from "./openai-to-claude/thinkingBudget.ts";
@@ -115,11 +114,9 @@ export function normalizeContentToString(content: string | unknown[] | null | un
 }
 
 // Convert OpenAI request to Claude format
-export function openaiToClaudeRequest(model, body, stream, credentials = null) {
+export function openaiToClaudeRequest(model, body, stream) {
   // Check if tool prefix should be disabled (configured per-provider or global)
   const disableToolPrefix = body?._disableToolPrefix === true;
-  const routedProvider = credentials?._provider;
-  const isKimiCoding = routedProvider === "kimi-coding" || routedProvider === "kimi-coding-apikey";
 
   // Tool name mapping for Claude OAuth (capitalizedName → originalName)
   const toolNameMap = new Map();
@@ -175,9 +172,7 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null) {
   // extended thinking enabled — required to correctly gate the `redacted_thinking`
   // replay-placeholder injection (#5945). This block has no dependency on
   // `result.messages`/`toolNameMap`, so moving it earlier is safe.
-  if (isKimiCoding) {
-    applyKimiCodingThinking(result, body);
-  } else if (body.thinking) {
+  if (body.thinking) {
     result.thinking = {
       type: body.thinking.type || "enabled",
       ...(body.thinking.budget_tokens && { budget_tokens: body.thinking.budget_tokens }),
@@ -238,14 +233,12 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null) {
   // Replaces the previous unconditional `budget + 8192` inflation, which
   // could exceed model caps (e.g. Opus 4.7's 128000 ceiling) and trigger
   // HTTP 400 from Anthropic.
-  if (!isKimiCoding) {
-    const fitted = fitThinkingToMaxTokens(model, Number(result.max_tokens) || 0, result.thinking);
-    result.max_tokens = fitted.maxTokens;
-    if (fitted.thinking === undefined) {
-      delete result.thinking;
-    } else {
-      result.thinking = applyCopilotSummarizedThinkingDisplay(fitted.thinking, body);
-    }
+  const fitted = fitThinkingToMaxTokens(model, Number(result.max_tokens) || 0, result.thinking);
+  result.max_tokens = fitted.maxTokens;
+  if (fitted.thinking === undefined) {
+    delete result.thinking;
+  } else {
+    result.thinking = applyCopilotSummarizedThinkingDisplay(fitted.thinking, body);
   }
 
   delete result[COPILOT_REASONING_SUMMARY_MARKER];
@@ -302,8 +295,7 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null) {
         msg,
         toolNameMap,
         disableToolPrefix,
-        thinkingEnabledForRequest,
-        isKimiCoding
+        thinkingEnabledForRequest
       );
       const hasToolUse = blocks.some((b) => b.type === "tool_use");
       const hasToolResult = blocks.some((b) => b.type === "tool_result");
@@ -497,8 +489,7 @@ function getContentBlocksFromMessage(
   msg,
   toolNameMap = new Map(),
   disableToolPrefix = false,
-  thinkingEnabledForRequest = false,
-  isKimiCoding = false
+  thinkingEnabledForRequest = false
 ) {
   const blocks = [];
 
@@ -686,9 +677,7 @@ function getContentBlocksFromMessage(
       (b) => b.type === "thinking" || b.type === "redacted_thinking"
     );
     const hasToolUseBlock = blocks.some((b) => b.type === "tool_use");
-    if (isKimiCoding && typeof msg.reasoning_content === "string" && !hasThinkingBlock) {
-      blocks.unshift({ type: "thinking", thinking: msg.reasoning_content });
-    } else if (
+    if (
       msg.reasoning_content &&
       thinkingEnabledForRequest &&
       hasToolUseBlock &&

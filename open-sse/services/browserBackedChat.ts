@@ -26,7 +26,6 @@ import {
 } from "./browserPool.ts";
 import tlsClient from "../utils/tlsClient.ts";
 import { sanitizeErrorMessage } from "../utils/error.ts";
-import { resolveHttpBackedChatFingerprint } from "./httpBackedChatFingerprint.ts";
 
 // Safety constants
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -442,10 +441,11 @@ export async function httpBackedChat(
   const t0 = Date.now();
 
   const { chatUrl, userMessage, cookieString, cookieDomain, chatUrlMatchDomain, signal } = req;
-  const fingerprint = resolveHttpBackedChatFingerprint(chatUrlMatchDomain); // #7548
+
   // Build browser-emulated headers
   const headers: Record<string, string> = {
-    "User-Agent": fingerprint.userAgent,
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
     Accept: "text/event-stream, application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
     "Content-Type": "application/json",
@@ -460,9 +460,9 @@ export async function httpBackedChat(
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
-    "Sec-Ch-Ua": fingerprint.secChUa,
+    "Sec-Ch-Ua": '"Chromium";v="149", "Google Chrome";v="149", "Not-A.Brand";v="99"',
     "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": fingerprint.secChUaPlatform,
+    "Sec-Ch-Ua-Platform": '"macOS"',
     Priority: "u=1, i",
   };
 

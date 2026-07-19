@@ -6,11 +6,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/shared/utils/cn";
 import { getActiveSidebarHref } from "@/shared/utils/sidebarRouteMatch";
 import { filterSidebarSectionsByQuery } from "@/shared/utils/sidebarSearch";
-import {
-  expandActiveSection,
-  hydrateExpandedSections,
-  toggleExpandedSection,
-} from "@/shared/utils/sidebarExpansionState";
 import { APP_CONFIG } from "@/shared/constants/appConfig";
 import OmniRouteLogo from "./OmniRouteLogo";
 import Button from "./Button";
@@ -107,12 +102,10 @@ export default function Sidebar({
     new Set([DEFAULT_EXPANDED])
   );
   const [pinnedSections, setPinnedSections] = useState<Set<SidebarSectionId>>(new Set());
-  const [sidebarExpansionLoaded, setSidebarExpansionLoaded] = useState(false);
-  const skipInitialActiveExpansion = useRef(false);
   const [hoveredItem, setHoveredItem] = useState<HoveredItem>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Load persisted state on mount. A stored [] intentionally means "all sections collapsed".
+  // Load persisted state on mount; OmniProxy is pinned by default on first visit
   useEffect(() => {
     const storedExpanded = loadFromStorage<SidebarSectionId[]>(EXPANDED_SECTIONS_KEY, [
       DEFAULT_EXPANDED,
@@ -129,13 +122,15 @@ export default function Sidebar({
         ? (JSON.parse(pinnedRaw) as SidebarSectionId[])
         : (SIDEBAR_SECTIONS.filter((s) => s.defaultPinned).map((s) => s.id) as SidebarSectionId[]);
 
+    const initialExpanded = new Set<SidebarSectionId>(
+      storedExpanded.length > 0 ? storedExpanded : [DEFAULT_EXPANDED]
+    );
     const initialPinned = new Set<SidebarSectionId>(storedPinned);
-    const initialExpanded = hydrateExpandedSections(storedExpanded, initialPinned);
+    // Pinned sections must also be expanded
+    for (const id of initialPinned) initialExpanded.add(id);
 
-    skipInitialActiveExpansion.current = storedExpanded.length === 0;
     setExpandedSections(initialExpanded);
     setPinnedSections(initialPinned);
-    setSidebarExpansionLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -279,21 +274,18 @@ export default function Sidebar({
     ? filterSidebarSectionsByQuery(visibleSections, searchQuery)
     : visibleSections;
 
-  // Keep the active page visible while preserving accordion semantics for unpinned sections.
+  // Auto-expand the section containing the active page (without closing others)
   useEffect(() => {
-    if (collapsed || !sidebarExpansionLoaded) return;
-    if (skipInitialActiveExpansion.current) {
-      skipInitialActiveExpansion.current = false;
-      return;
-    }
+    if (collapsed) return;
     for (const section of visibleSections) {
       const sectionItems = section.children.flatMap((child: any) =>
         child.type === "group" ? child.items : [child]
       );
       if (sectionItems.some((item: any) => !item.external && item.href === activeHref)) {
         setExpandedSections((prev) => {
-          const next = expandActiveSection(pinnedSections, section.id as SidebarSectionId);
-          if ([...next].every((id) => prev.has(id)) && next.size === prev.size) return prev;
+          if (prev.has(section.id as SidebarSectionId)) return prev;
+          const next = new Set(prev);
+          next.add(section.id as SidebarSectionId);
           saveToStorage(EXPANDED_SECTIONS_KEY, [...next]);
           return next;
         });
@@ -301,13 +293,26 @@ export default function Sidebar({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeHref, collapsed, pinnedSections, sidebarExpansionLoaded]);
+  }, [activeHref, collapsed]);
 
   // Accordion toggle: opening a section closes all non-pinned sections
   const toggleSection = useCallback(
     (sectionId: SidebarSectionId) => {
       setExpandedSections((prev) => {
-        const next = toggleExpandedSection(prev, pinnedSections, sectionId);
+        const isOpen = prev.has(sectionId);
+        let next: Set<SidebarSectionId>;
+        if (isOpen) {
+          // Close this section
+          next = new Set(prev);
+          next.delete(sectionId);
+        } else {
+          // Accordion: keep only pinned sections + the new one
+          next = new Set<SidebarSectionId>();
+          for (const id of pinnedSections) {
+            next.add(id);
+          }
+          next.add(sectionId);
+        }
         saveToStorage(EXPANDED_SECTIONS_KEY, [...next]);
         return next;
       });

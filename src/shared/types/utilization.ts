@@ -82,8 +82,6 @@ export interface ComboRecord {
   name?: string;
   strategy?: string;
   models?: unknown[];
-  autoConfig?: unknown;
-  config?: unknown;
 }
 
 export type UtilizationTimeRange = "1h" | "24h" | "7d" | "30d";
@@ -272,9 +270,11 @@ export type ComboScoringInspectorFactorKey =
   | "resetWindowAffinity";
 
 export type ComboScoringInspectorSource =
-  "combo_health" | "combo_forecast" | "combo_autopilot" | "runtime" | "default";
-
-export type ComboScoringInspectorWeightSource = "default" | "explicit" | "mode_pack";
+  | "combo_health"
+  | "combo_forecast"
+  | "combo_autopilot"
+  | "runtime"
+  | "default";
 
 export interface ComboScoringInspectorFactor {
   key: ComboScoringInspectorFactorKey;
@@ -376,8 +376,6 @@ export interface ComboScoringInspectorCombo {
   strategy: string;
   taskType: string;
   weights: Record<ComboScoringInspectorFactorKey, number>;
-  weightSource: ComboScoringInspectorWeightSource;
-  modePack: string | null;
   selectedExecutionKey: string | null;
   targets: ComboScoringInspectorTarget[];
   warnings: string[];

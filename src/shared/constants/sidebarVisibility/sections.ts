@@ -731,6 +731,7 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionDefinition[] = [
       INTEGRATIONS_GROUP,
       PROXY_ITEM,
     ],
+    defaultPinned: true,
   },
   {
     id: "analytics",

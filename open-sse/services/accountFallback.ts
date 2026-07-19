@@ -44,8 +44,6 @@ import {
   buildSessionQuotaFallback,
 } from "./quotaTextCooldowns.ts";
 import { parseDayGranularityResetMs, shouldPreserveQuotaSignals } from "./quotaResetParsing.ts";
-import { evictLockoutOverflow } from "./accountFallback/lockoutEviction.ts";
-export { MODEL_LOCKOUT_EVICTION_CAP } from "./accountFallback/lockoutEviction.ts";
 
 export type ProviderProfile = {
   baseCooldownMs: number;
@@ -71,7 +69,7 @@ export type ProviderProfile = {
 };
 type JsonRecord = Record<string, unknown>;
 type RateLimitReasonValue = (typeof RateLimitReason)[keyof typeof RateLimitReason];
-export type ModelLockoutEntry = {
+type ModelLockoutEntry = {
   reason: string;
   until: number;
   lockedAt: number;
@@ -79,7 +77,7 @@ export type ModelLockoutEntry = {
   lastFailureAt: number;
   resetAfterMs: number;
 };
-export type ModelFailureState = {
+type ModelFailureState = {
   failureCount: number;
   lastFailureAt: number;
   resetAfterMs: number;
@@ -469,7 +467,6 @@ function ensureCleanupTimer() {
       const now = Date.now();
       for (const key of modelLockouts.keys()) cleanupModelLockKey(key, now);
       for (const key of modelFailureState.keys()) cleanupModelLockKey(key, now);
-      evictModelLockoutOverflow();
     }, 15_000);
     if (typeof _cleanupTimer === "object" && "unref" in _cleanupTimer) {
       (_cleanupTimer as { unref?: () => void }).unref?.(); // Don't prevent process exit (Node.js only)
@@ -477,14 +474,6 @@ function ensureCleanupTimer() {
   } catch {
     // Cloudflare Workers may not support setInterval outside handlers — skip cleanup timer
   }
-}
-
-/** @internal exported for testing only (both accessors below). */
-export function evictModelLockoutOverflow(): void {
-  evictLockoutOverflow(modelLockouts, modelFailureState);
-}
-export function getModelLockoutSize(): number {
-  return modelLockouts.size;
 }
 
 /**
@@ -1565,21 +1554,13 @@ export function checkFallbackError(
       }
       return fallback;
     }
-    // #6842: non-backoff configured rules (e.g. status_402) previously never
-    // consulted providerRuleRegistry, so a provider-specific rule (like
-    // OpenRouter's credit-exhausted 402 lock) could never override the
-    // generic zero-cooldown default. Mirror the backoff branch above so
-    // provider rules win on cooldown/reason regardless of `backoff`.
-    const providerMatch = provider
-      ? getProviderErrorRuleMatch(provider, status, headers, structuredError ?? null)
-      : null;
-    const cooldownMs = providerMatch?.cooldownMs ?? configuredRule.cooldownMs ?? 0;
+    const cooldownMs = configuredRule.cooldownMs ?? 0;
     return {
       shouldFallback: true,
       cooldownMs,
       baseCooldownMs: cooldownMs,
       configuredCooldownMs: cooldownMs,
-      reason: providerMatch?.reason ?? configuredRule.reason ?? RateLimitReason.UNKNOWN,
+      reason: configuredRule.reason ?? RateLimitReason.UNKNOWN,
     };
   }
 

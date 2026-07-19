@@ -196,7 +196,6 @@ export default function RequestLoggerDetail({
     text: "#fff",
     label: (log.provider || "-").toUpperCase(),
   };
-  const providerLabel = log.providerDisplay || providerColor.label;
 
   const providerStatus = detail?.pipelinePayloads?.providerResponse?.status;
   const hasStatusDiscrepancy = providerStatus && providerStatus !== log.status;
@@ -401,7 +400,7 @@ export default function RequestLoggerDetail({
                   className="inline-block px-2.5 py-1 rounded text-[10px] font-bold uppercase"
                   style={{ backgroundColor: providerColor.bg, color: providerColor.text }}
                 >
-                  {providerLabel}
+                  {providerColor.label}
                 </span>
               </div>
               <div className="min-w-[120px] flex-1">
@@ -524,7 +523,7 @@ export default function RequestLoggerDetail({
                   className="inline-block px-2.5 py-1 rounded text-[10px] font-bold uppercase"
                   style={{ backgroundColor: providerColor.bg, color: providerColor.text }}
                 >
-                  {providerLabel}
+                  {providerColor.label}
                 </span>
               </div>
               <div>

@@ -16,8 +16,6 @@ type ConnectionsHeaderToolbarProps = {
   batchRetesting: boolean;
   retestingId: string | null;
   proxyConfig: any;
-  reorderingByAvailability: boolean;
-  handleReorderByAvailability: () => void | Promise<void>;
   // from useProviderSettings
   preferClaudeCodeForUnprefixedClaudeModels: boolean;
   claudeRoutingSettingsLoaded: boolean;
@@ -63,8 +61,6 @@ export default function ConnectionsHeaderToolbar({
   batchRetesting,
   retestingId,
   proxyConfig,
-  reorderingByAvailability,
-  handleReorderByAvailability,
   preferClaudeCodeForUnprefixedClaudeModels,
   claudeRoutingSettingsLoaded,
   claudeRoutingSettingsLoadError,
@@ -248,23 +244,6 @@ export default function ConnectionsHeaderToolbar({
             </span>
             {batchTesting ? t("testing") : t("testAll")}
           </button>
-        )}
-        {connections.length > 1 && (
-          <Button
-            size="sm"
-            variant="secondary"
-            icon="swap_vert"
-            loading={reorderingByAvailability}
-            disabled={batchTesting || !!retestingId}
-            onClick={() => void handleReorderByAvailability()}
-            title={providerText(
-              t,
-              "reorderByAvailabilityTitle",
-              "Reorder connections by availability"
-            )}
-          >
-            {providerText(t, "reorderByAvailability", "Reorder")}
-          </Button>
         )}
         {!isCompatible ? (
           <>

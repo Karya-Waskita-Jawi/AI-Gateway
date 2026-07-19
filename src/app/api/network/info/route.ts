@@ -12,7 +12,6 @@ export async function GET(request: Request) {
 
   const { apiPort } = getRuntimePorts();
   const interfaces = os.networkInterfaces();
-  const localUrl = `http://localhost:${apiPort}/v1`;
   const lanUrls: string[] = [];
   let tailscaleIpUrl: string | null = null;
 
@@ -29,5 +28,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ localUrl, lanUrls, tailscaleIpUrl });
+  return NextResponse.json({ lanUrls, tailscaleIpUrl });
 }

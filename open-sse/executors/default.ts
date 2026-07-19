@@ -19,7 +19,7 @@ import { applyProviderRequestDefaults } from "../services/providerRequestDefault
 import { stripUnsupportedParams } from "../translator/paramSupport.ts";
 import {
   injectReasoningContentForThinkingModel,
-  shouldInjectReasoningContentPlaceholder,
+  isThinkingMessageModel,
 } from "../utils/reasoningContentInjector.ts";
 import {
   detectFormat,
@@ -52,7 +52,6 @@ import {
   normalizeGigachatChatUrl,
 } from "@/lib/providers/validation/urlHelpers";
 import { forwardOpencodeClientHeaders } from "../utils/opencodeHeaders.ts";
-import { resolveZaiUrl } from "./default/zaiFormatOverride.ts";
 
 import type { PoolConfig } from "../services/sessionPool/types.ts";
 
@@ -243,9 +242,10 @@ export class DefaultExecutor extends BaseExecutor {
         return normalizeOpenAIChatUrl(baseUrl);
       }
       case "zai":
-      case "glm-coding-apikey":
-        // #7364: format override extracted to zaiFormatOverride.ts (file-size ratchet).
-        return resolveZaiUrl(credentials, (fallback) => this.resolveBaseUrl(credentials, fallback));
+      case "glm-coding-apikey": {
+        const zaiBaseUrl = this.resolveBaseUrl(credentials);
+        return `${zaiBaseUrl}?beta=true`;
+      }
       case "claude":
       case "glm":
       case "glmt":
@@ -562,7 +562,9 @@ export class DefaultExecutor extends BaseExecutor {
       withDefaults &&
       typeof withDefaults === "object" &&
       !Array.isArray(withDefaults) &&
-      (this.provider === "cerebras" || this.provider === "mistral" || this.provider === "nvidia") &&
+      (this.provider === "cerebras" ||
+        this.provider === "mistral" ||
+        this.provider === "nvidia") &&
       Object.prototype.hasOwnProperty.call(withDefaults, "client_metadata")
     ) {
       const withoutClientMetadata = { ...(withDefaults as Record<string, unknown>) };
@@ -730,24 +732,27 @@ export class DefaultExecutor extends BaseExecutor {
       }
     }
 
-    // Reasoning models burn all of max_tokens on the thinking phase when the budget is too
-    // small, leaving content empty (finish_reason: "length"); applies to all providers (#6912).
+    // ClinePass reasoning models burn all of max_tokens on the thinking phase
+    // when the budget is too small, leaving content empty (finish_reason:
+    // "length"). Bump max_tokens to a safe floor when reasoning is enabled and
+    // the budget is undersized. CLINEPASS-GATED — no-op for every other provider.
     if (typeof withDefaults === "object" && withDefaults !== null) {
       this.ensureThinkingBudget(withDefaults as Record<string, unknown>, model);
     }
 
-    // 9router#1480: native Moonshot providers 400 when a prior assistant turn
-    // lacks reasoning_content. OpencodeExecutor
+    // 9router#1480: the native Moonshot `kimi` provider (executor "default")
+    // is a thinking-mode upstream that 400s with "reasoning_content must be
+    // passed back" when a prior assistant turn lacks it. OpencodeExecutor
     // already injects a placeholder for OpenCode-routed thinking models; the
-    // direct connections hit neither injection path. Scope to Moonshot ids so
+    // direct kimi connection hit neither injection path. Scope to `kimi` so
     // gateway-served models that merely match the thinking-model name pattern
     // (and may reject an extra field) are unaffected.
-    if (this.provider === "kimi" || this.provider === "moonshot") {
+    if (this.provider === "kimi") {
       const outboundModel =
         typeof (withDefaults as Record<string, unknown>)?.model === "string"
           ? ((withDefaults as Record<string, unknown>).model as string)
           : model;
-      if (shouldInjectReasoningContentPlaceholder(this.provider, outboundModel)) {
+      if (isThinkingMessageModel(outboundModel)) {
         withDefaults = injectReasoningContentForThinkingModel(withDefaults);
       }
     }
@@ -755,10 +760,12 @@ export class DefaultExecutor extends BaseExecutor {
     return withDefaults;
   }
 
-  // Reasoning models (ClinePass, OpenRouter, etc.) leave content empty when the reasoning
-  // budget consumes all of max_tokens; bump max_tokens to a safe minimum when undersized.
+  // ClinePass / OpenRouter-style thinking models leave content empty when the
+  // reasoning budget consumes all of max_tokens. Bump max_tokens to a safe
+  // minimum only when reasoning is enabled and the budget is undersized.
+  // CLINEPASS-GATED: returns early for every other provider.
   ensureThinkingBudget(body: Record<string, unknown>, model: string): Record<string, unknown> {
-    if (!body) return body;
+    if (!body || this.provider !== "clinepass") return body;
 
     const outboundModel = typeof body.model === "string" ? body.model : model;
     const entry = getRegistryEntry(this.provider);
@@ -782,15 +789,10 @@ export class DefaultExecutor extends BaseExecutor {
     const target = Math.min(MIN_TOKENS, maxOutput);
     const current = body.max_tokens ?? body.max_completion_tokens;
 
-    // #6912: keep whichever token key transformRequest already set (o1/o3/o4/gpt-5 use
-    // max_completion_tokens) instead of re-introducing max_tokens alongside it.
-    const tokenKey =
-      body.max_completion_tokens !== undefined ? "max_completion_tokens" : "max_tokens";
-
     if (typeof current !== "number" || current <= 0) {
-      body[tokenKey] = target;
+      body.max_tokens = target;
     } else if (current < MIN_TOKENS && current < maxOutput) {
-      body[tokenKey] = MIN_TOKENS;
+      body.max_tokens = MIN_TOKENS;
     }
     return body;
   }

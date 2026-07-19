@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, ModelSelectField, Toggle } from "@/shared/components";
+import { Card, Toggle } from "@/shared/components";
 import { useTranslations } from "next-intl";
 
 export default function BackgroundDegradationTab() {
@@ -153,21 +153,21 @@ export default function BackgroundDegradationTab() {
 
             {/* Add new mapping */}
             <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1">
-                <ModelSelectField
-                  value={newFrom}
-                  onChange={setNewFrom}
-                  placeholder={t("premiumModel") || "Premium model"}
-                />
-              </div>
+              <input
+                type="text"
+                placeholder={t("premiumModel") || "Premium model"}
+                value={newFrom}
+                onChange={(e) => setNewFrom(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg text-sm bg-surface border border-border/50 focus:border-sky-500/50 focus:outline-none"
+              />
               <span className="text-text-muted text-lg">→</span>
-              <div className="flex-1">
-                <ModelSelectField
-                  value={newTo}
-                  onChange={setNewTo}
-                  placeholder={t("cheapModel") || "Cheap model"}
-                />
-              </div>
+              <input
+                type="text"
+                placeholder={t("cheapModel") || "Cheap model"}
+                value={newTo}
+                onChange={(e) => setNewTo(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg text-sm bg-surface border border-border/50 focus:border-sky-500/50 focus:outline-none"
+              />
               <button
                 onClick={addMapping}
                 disabled={saving || !newFrom.trim() || !newTo.trim()}

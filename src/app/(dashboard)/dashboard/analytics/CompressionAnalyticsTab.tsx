@@ -83,10 +83,7 @@ function ModeBar({
           {skipped > 0 && (
             // #4268: attempted-but-no-op runs (e.g. Stacked saved nothing) are
             // recorded now, so this mode is visible even when count is 0.
-            <span className="text-text-muted/70">
-              {" "}
-              · {skipped.toLocaleString()} skipped (no-op)
-            </span>
+            <span className="text-text-muted/70"> · {skipped.toLocaleString()} skipped (no-op)</span>
           )}
         </span>
       </div>
@@ -177,7 +174,6 @@ export default function CompressionAnalyticsTab() {
 
   const modes = Object.entries(stats.byMode).sort(([, a], [, b]) => b.count - a.count);
   const providers = Object.entries(stats.byProvider).sort(([, a], [, b]) => b.count - a.count);
-  const totalAttempts = stats.totalRequests + (stats.totalSkipped ?? 0);
 
   // Calculate max tokens for hourly chart scaling
   const maxTokensPerHour = Math.max(...stats.last24h.map((h) => h.tokensSaved), 1);
@@ -213,7 +209,7 @@ export default function CompressionAnalyticsTab() {
         <StatCard
           icon="compress"
           label={t("compressionAnalyticsTotalRequests")}
-          value={totalAttempts.toLocaleString()}
+          value={stats.totalRequests.toLocaleString()}
         />
         <StatCard
           icon="token"
@@ -369,7 +365,7 @@ export default function CompressionAnalyticsTab() {
       )}
 
       {/* Empty state */}
-      {totalAttempts === 0 && (
+      {stats.totalRequests === 0 && (
         <div className="card p-8 text-center text-text-muted">
           <span className="material-symbols-outlined text-[48px] mb-3 block text-primary opacity-50">
             compress

@@ -9,10 +9,6 @@ import { useRouter } from "next/navigation";
 import { Card, CardSkeleton, Button, Modal } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { AI_PROVIDERS, NOAUTH_PROVIDERS, OAUTH_PROVIDERS } from "@/shared/constants/providers";
-import {
-  isProviderConnectionConnected,
-  isProviderConnectionErrored,
-} from "@/shared/utils/providerConnectionStatus";
 import { useNotificationStore } from "@/store/notificationStore";
 import { extractApiErrorMessage } from "@/shared/http/apiErrorMessage";
 import { copyToClipboard } from "@/shared/utils/clipboard";
@@ -427,11 +423,19 @@ export default function HomePageClient({ machineId }: HomePageClientProps) {
   const providerStats = useMemo(() => {
     return Object.entries(AI_PROVIDERS).map(([providerId, providerInfo]) => {
       const connections = providerConnections.filter((conn) => conn.provider === providerId);
-      const connected = connections.filter((connection) =>
-        isProviderConnectionConnected(connection)
+      const connected = connections.filter(
+        (conn) =>
+          conn.isActive !== false &&
+          (conn.testStatus === "active" ||
+            conn.testStatus === "success" ||
+            conn.testStatus === "unknown")
       ).length;
-      const errors = connections.filter((connection) =>
-        isProviderConnectionErrored(connection)
+      const errors = connections.filter(
+        (conn) =>
+          conn.isActive !== false &&
+          (conn.testStatus === "error" ||
+            conn.testStatus === "expired" ||
+            conn.testStatus === "unavailable")
       ).length;
 
       const providerKeys = new Set([providerId, providerInfo.alias].filter(Boolean));

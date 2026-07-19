@@ -161,25 +161,9 @@ async function checkCertInstalledLinux(certPath: string): Promise<boolean> {
   }
 }
 
-/**
- * Windows `certutil -store <storename> <certId>` accepts a serial number, a
- * SHA-1 thumbprint, or a substring of the subject/friendly name as `certId`.
- * Older code passed the literal legacy hostname `daily-cloudcode-pa.googleapis.com`
- * here — it only "worked" because that happens to be the CA's own commonName
- * today (`generate.ts` derives it from `ANTIGRAVITY_TARGET.hosts[0]`), a
- * coincidence with no shared symbol coupling the two (#7275). Deriving the
- * thumbprint from the actual `certPath` file — the same identity
- * {@link checkCertInstalledMac} already keys off via {@link getCertFingerprint}
- * — makes the Windows store lookup match the real generated CA regardless of
- * any future rename/reorder in `generate.ts`.
- */
-export function certutilThumbprint(certPath: string): string {
-  return getCertFingerprint(certPath).replace(/:/g, "");
-}
-
-async function checkCertInstalledWindows(certPath: string): Promise<boolean> {
+async function checkCertInstalledWindows(_certPath: string): Promise<boolean> {
   try {
-    await execFileText("certutil", ["-store", "Root", certutilThumbprint(certPath)]);
+    await execFileText("certutil", ["-store", "Root", "daily-cloudcode-pa.googleapis.com"]);
     return true;
   } catch {
     return false;
@@ -397,7 +381,7 @@ export async function uninstallCert(sudoPassword: string, certPath: string): Pro
   }
 
   if (IS_WIN) {
-    await uninstallCertWindows(certPath);
+    await uninstallCertWindows();
   } else if (IS_MAC) {
     await uninstallCertMac(sudoPassword, certPath);
   } else {
@@ -447,20 +431,10 @@ async function uninstallCertLinux(sudoPassword: string, certPath: string): Promi
   }
 }
 
-/**
- * Pure builder for the elevated `certutil -delstore` script, extracted so the
- * regression test can assert the argv it embeds without spawning a real
- * `powershell`/UAC prompt (mirrors {@link buildCertManualGuide} /
- * {@link buildElevatedScriptWrapper}, already tested the same way).
- */
-export function buildWindowsDelstoreScript(thumbprint: string): string {
-  return `
-    $proc = Start-Process certutil -ArgumentList @('-delstore','Root',${quotePowerShell(thumbprint)}) -Verb RunAs -Wait -PassThru;
+async function uninstallCertWindows(): Promise<void> {
+  await runElevatedPowerShell(`
+    $proc = Start-Process certutil -ArgumentList @('-delstore','Root','daily-cloudcode-pa.googleapis.com') -Verb RunAs -Wait -PassThru;
     if ($proc.ExitCode -ne 0) { throw "certutil exited with code $($proc.ExitCode)" }
-  `;
-}
-
-async function uninstallCertWindows(certPath: string): Promise<void> {
-  await runElevatedPowerShell(buildWindowsDelstoreScript(certutilThumbprint(certPath)));
+  `);
   console.log("✅ Uninstalled certificate from Windows Root store");
 }

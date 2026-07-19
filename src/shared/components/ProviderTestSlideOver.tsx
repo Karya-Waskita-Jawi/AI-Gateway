@@ -314,7 +314,6 @@ interface LogEntry {
   model?: string;
   requestedModel?: string;
   provider?: string;
-  providerDisplay?: string | null;
   status?: number;
   duration?: number;
   tokens?: { in?: number; out?: number };
@@ -519,7 +518,7 @@ function LogDetail({ log }: { log: LogEntry }) {
     { label: "Duration", value: formatDurationMs(log.duration) },
     { label: "Model", value: log.model || "—", mono: true },
     { label: "Requested model", value: log.requestedModel || "—", mono: true },
-    { label: "Provider", value: log.providerDisplay || log.provider || "—", mono: true },
+    { label: "Provider", value: log.provider || "—", mono: true },
     { label: "Requester", value: requester.title, mono: true },
     {
       label: "Tokens",
