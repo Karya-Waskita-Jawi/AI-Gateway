@@ -1,3 +1,9 @@
+---
+title: "Reasoning Routing"
+version: 3.8.49
+lastUpdated: 2026-07-20
+---
+
 # Reasoning Routing
 
 Reasoning routing rules extend the existing model and combo routing. When no active rule matches,

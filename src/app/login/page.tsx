@@ -1,20 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useTranslations } from "next-intl";
-
-import { useState, useEffect } from "react";
-import { Button, Input } from "@/shared/components";
+import { useState, useEffect, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
+const BRAND = "Waskita AI";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hasPassword, setHasPassword] = useState(null);
-  const [setupComplete, setSetupComplete] = useState(null);
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [nodeVersion, setNodeVersion] = useState(null);
+  const [nodeVersion, setNodeVersion] = useState<string | null>(null);
   const [nodeCompatible, setNodeCompatible] = useState(true);
   const router = useRouter();
 
@@ -46,7 +46,7 @@ export default function LoginPage() {
           setHasPassword(true);
           setSetupComplete(true);
         }
-      } catch (err) {
+      } catch {
         clearTimeout(timeoutId);
         setHasPassword(true);
         setSetupComplete(true);
@@ -55,7 +55,7 @@ export default function LoginPage() {
     checkAuth();
   }, [router]);
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -73,258 +73,169 @@ export default function LoginPage() {
         router.refresh();
       } else {
         const data = await res.json();
-        // (#521) If no password is set, redirect to onboarding instead of showing an error
         if (data.needsSetup) {
           router.push("/dashboard/onboarding");
           return;
         }
         setError(data.error || t("invalidPassword"));
       }
-    } catch (err) {
+    } catch {
       setError(t("errorOccurredRetry"));
     } finally {
       setLoading(false);
     }
   };
 
-  const nodeWarningBanner =
-    !nodeCompatible && nodeVersion ? (
-      <div className="w-full max-w-lg mx-auto mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
-        <div className="bg-red-950/60 border-2 border-red-500/40 rounded-2xl p-6 shadow-lg shadow-red-900/20 backdrop-blur-sm">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-red-400 text-[28px]">error</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-red-300 mb-1">
-                {t("nodeIncompatibleTitle")}
-              </h3>
-              <p className="text-sm text-red-200/80 leading-relaxed mb-3">
-                {t("nodeIncompatibleDesc", { version: nodeVersion })}
-              </p>
-              <div className="bg-black/40 rounded-lg px-4 py-3 font-mono text-sm border border-red-500/20">
-                <div className="flex items-center gap-2 text-red-300/60 mb-1">
-                  <span className="material-symbols-outlined text-[14px]">terminal</span>
-                  <span className="text-xs">{t("nodeIncompatibleFixLabel")}</span>
-                </div>
-                <code className="text-amber-300">nvm install 22 && nvm use 22</code>
-              </div>
-              <p className="text-xs text-red-300/50 mt-3 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[14px]">info</span>
-                {t("nodeIncompatibleHint")}
-              </p>
-            </div>
+  const shell = (left: ReactNode, right: ReactNode) => (
+    <div
+      className="min-h-screen bg-black text-white font-[family-name:var(--font-login-sans)]"
+      style={{ fontFamily: "var(--font-login-sans), Inter, system-ui, sans-serif" }}
+    >
+      {!nodeCompatible && nodeVersion ? (
+        <div className="px-6 pt-6 max-w-3xl mx-auto">
+          <div className="rounded-2xl border border-red-500/40 bg-red-950/60 p-5 text-sm text-red-100">
+            <p className="font-semibold mb-1">{t("nodeIncompatibleTitle")}</p>
+            <p className="text-red-200/80">{t("nodeIncompatibleDesc", { version: nodeVersion })}</p>
           </div>
         </div>
+      ) : null}
+
+      <header className="flex items-center justify-between px-8 md:px-12 pt-8">
+        <span className="text-[22px] font-semibold tracking-tight lowercase">{BRAND}</span>
+        <a
+          href="/"
+          className="text-sm text-white/55 hover:text-white/90 px-4 py-1.5 rounded-full bg-white/[0.06] border border-white/10 transition-colors"
+        >
+          Close
+        </a>
+      </header>
+
+      <main
+        className={`mx-auto max-w-6xl px-8 md:px-12 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-20 items-center transition-all duration-700 ease-out ${
+          mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+        }`}
+      >
+        <section className="max-w-xl">{left}</section>
+        <section className="w-full max-w-md lg:justify-self-end">{right}</section>
+      </main>
+    </div>
+  );
+
+  const brandHeading = (title: string, lines: string[]) => (
+    <>
+      <div className="flex items-center gap-3 mb-8">
+        <span className="text-[28px] font-semibold tracking-tight lowercase">{BRAND}</span>
+        <span className="text-[10px] font-semibold tracking-[0.14em] uppercase px-2.5 py-1 rounded-md bg-[#6B5CFF] text-white">
+          BETA
+        </span>
       </div>
-    ) : null;
+      <h1
+        className="text-[42px] md:text-[52px] leading-[1.08] text-white mb-6"
+        style={{ fontFamily: "var(--font-login-serif), Georgia, serif" }}
+      >
+        {title}
+      </h1>
+      <div className="space-y-3 text-[15px] leading-relaxed text-white/70 max-w-md">
+        {lines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+      </div>
+    </>
+  );
+
+  const fieldClass =
+    "w-full h-12 px-4 rounded-xl bg-[#1a1a1a] border border-white/10 text-[15px] text-white placeholder:text-white/35 outline-none focus:border-white/30 transition-colors";
 
   if (hasPassword === null || setupComplete === null) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        {nodeWarningBanner}
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="w-10 h-10 border-2 border-primary/20 rounded-full"></div>
-            <div className="absolute inset-0 w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <span className="text-sm text-text-muted">{t("loading")}</span>
+    return shell(
+      brandHeading("One gateway. Every model.", [
+        "Secure access to your private AI routing layer.",
+        "Sign in to manage providers, keys, and traffic.",
+      ]),
+      <div className="flex flex-col items-center justify-center min-h-[220px] gap-3">
+        <div className="relative">
+          <div className="w-10 h-10 border-2 border-white/15 rounded-full" />
+          <div className="absolute inset-0 w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
+        <span className="text-sm text-white/50">{t("loading")}</span>
       </div>
     );
   }
 
   if (!hasPassword && !setupComplete) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        {nodeWarningBanner}
-        <div
-          className={`w-full max-w-md transition-all duration-700 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+    return shell(
+      brandHeading("Apply for early access.", [
+        "We're still fine-tuning Waskita AI and would love your feedback.",
+        "Complete onboarding to shape the best gateway for your team.",
+      ]),
+      <div className="space-y-6">
+        <p className="text-sm text-white/55 leading-relaxed">{t("runOnboardingWizard")}</p>
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/onboarding")}
+          className="w-full h-12 rounded-full bg-white text-black text-[15px] font-semibold hover:bg-white/90 transition-colors"
         >
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 mb-6">
-              <span className="material-symbols-outlined text-primary text-[40px]">
-                rocket_launch
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold text-text-main tracking-tight">{t("welcome")}</h1>
-            <p className="text-text-muted mt-2">{t("configureInstance")}</p>
-          </div>
-
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-soft">
-            <div className="text-center">
-              <p className="text-text-muted leading-relaxed mb-6">{t("runOnboardingWizard")}</p>
-              <Button
-                variant="primary"
-                className="w-full h-11 text-sm font-medium"
-                onClick={() => router.push("/dashboard/onboarding")}
-              >
-                {t("startOnboarding")}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-text-muted/60 mt-8">
-            OmniRoute — {t("unifiedProxy")}
-          </p>
-        </div>
+          {t("startOnboarding")}
+        </button>
       </div>
     );
   }
 
   if (!hasPassword && setupComplete) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
-        {nodeWarningBanner}
-        <div
-          className={`w-full max-w-md transition-all duration-700 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+    return shell(
+      brandHeading("Secure your instance.", [
+        "A password is not enabled yet.",
+        "Configure access control before exposing this gateway.",
+      ]),
+      <div className="space-y-6">
+        <p className="text-sm text-white/55 leading-relaxed">{t("setPasswordDescription")}</p>
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/onboarding")}
+          className="w-full h-12 rounded-full bg-white text-black text-[15px] font-semibold hover:bg-white/90 transition-colors"
         >
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/10 mb-6">
-              <span className="material-symbols-outlined text-amber-500 text-[40px]">
-                shield_person
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold text-text-main tracking-tight">
-              {t("secureYourInstance")}
-            </h1>
-            <p className="text-text-muted mt-2">{t("passwordNotEnabled")}</p>
-          </div>
-
-          <div className="bg-surface border border-border rounded-2xl p-8 shadow-soft">
-            <div className="text-center">
-              <p className="text-text-muted leading-relaxed mb-6">{t("setPasswordDescription")}</p>
-              <Button
-                variant="primary"
-                className="w-full h-11 text-sm font-medium"
-                onClick={() => router.push("/dashboard/onboarding")}
-              >
-                {t("configurePassword")}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-text-muted/60 mt-8">
-            OmniRoute — {t("unifiedAiApiProxy")}
-          </p>
-        </div>
+          {t("configurePassword")}
+        </button>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      {nodeWarningBanner && (
-        <div className="flex justify-center pt-6 px-6">{nodeWarningBanner}</div>
-      )}
-      <div className="flex-1 flex">
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div
-            className={`w-full max-w-sm transition-all duration-700 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-          >
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center">
-                  <span className="material-symbols-outlined text-white text-[20px]">hub</span>
-                </div>
-                <span className="text-xl font-semibold text-text-main tracking-tight">
-                  OmniRoute
-                </span>
-              </div>
-              <h1 className="text-2xl font-bold text-text-main tracking-tight">{t("signIn")}</h1>
-              <p className="text-text-muted mt-1.5">{t("enterPassword")}</p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-text-main">{t("password")}</label>
-                <Input
-                  type="password"
-                  placeholder={t("enterPassword")}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoFocus
-                  className="h-11"
-                />
-                {error && (
-                  <p className="text-sm text-red-500 flex items-center gap-1.5 pt-1">
-                    <span className="material-symbols-outlined text-base">error</span>
-                    {error}
-                  </p>
-                )}
-                <p className="text-xs text-text-muted/60 pt-0.5">{t("defaultPasswordHint")}</p>
-              </div>
-
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full h-11 text-sm font-medium"
-                loading={loading}
-              >
-                {t("continue")}
-              </Button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-border">
-              <a
-                href="/forgot-password"
-                className="text-sm text-text-muted hover:text-primary transition-colors"
-              >
-                {t("forgotPassword")}
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent items-center justify-center p-12">
-          <div
-            className={`max-w-md transition-all duration-700 delay-200 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-          >
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-text-main mb-3">{t("unifiedAiApiProxy")}</h2>
-                <p className="text-text-muted leading-relaxed">{t("unifiedAiApiProxyDesc")}</p>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    icon: "swap_horiz",
-                    title: t("featureMultiProviderTitle"),
-                    desc: t("featureMultiProviderDesc"),
-                  },
-                  {
-                    icon: "speed",
-                    title: t("featureLoadBalancingTitle"),
-                    desc: t("featureLoadBalancingDesc"),
-                  },
-                  {
-                    icon: "analytics",
-                    title: t("featureUsageTrackingTitle"),
-                    desc: t("featureUsageTrackingDesc"),
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.icon}
-                    className="flex items-start gap-4 p-4 rounded-xl bg-surface/50 border border-border"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-primary text-[20px]">
-                        {item.icon}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-text-main">{item.title}</h3>
-                      <p className="text-sm text-text-muted">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+  return shell(
+    brandHeading("Sign in to continue.", [
+      "Route Claude, GPT, Gemini and more through one private endpoint.",
+      "Manage providers, fallbacks, and usage from a single dashboard.",
+    ]),
+    <form onSubmit={handleLogin} className="space-y-5">
+      <div className="space-y-2">
+        <label className="block text-[13px] text-white/55">{t("password")}</label>
+        <input
+          type="password"
+          placeholder={t("enterPassword")}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoFocus
+          className={fieldClass}
+        />
+        {error ? <p className="text-sm text-red-400 pt-1">{error}</p> : null}
       </div>
-    </div>
+
+      <p className="text-[12px] leading-relaxed text-white/40">
+        By signing in, you agree to the access policy for this private gateway instance.
+      </p>
+
+      <div className="pt-2 flex flex-col items-center gap-4">
+        <button
+          type="submit"
+          disabled={loading}
+          className="min-w-[160px] h-12 px-10 rounded-full bg-white text-black text-[15px] font-semibold hover:bg-white/90 disabled:opacity-60 transition-colors"
+        >
+          {loading ? t("loading") : t("continue")}
+        </button>
+        <a href="/forgot-password" className="text-[13px] text-white/45 underline underline-offset-2 hover:text-white/75">
+          {t("forgotPassword")}
+        </a>
+      </div>
+    </form>
   );
 }
