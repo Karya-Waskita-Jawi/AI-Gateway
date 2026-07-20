@@ -678,3 +678,30 @@ export async function enforceApiKeyPolicy(
 
   return { apiKey, apiKeyInfo, rejection: null };
 }
+
+/**
+ * Reasoning-routing simulator helper: check whether a specific API key may
+ * target `targetModel` after a routing decision. Returns a rejection Response
+ * or null when allowed / no key to check.
+ */
+export async function validateApiKeyRoutingTarget(
+  _request: Request,
+  apiKey: string | null,
+  _apiKeyInfo: ApiKeyMetadata | null,
+  targetModel: string | null | undefined
+): Promise<Response | null> {
+  if (!apiKey || !targetModel) return null;
+  try {
+    const allowed = await isModelAllowedForKey(apiKey, targetModel);
+    if (!allowed) {
+      return errorResponse(
+        HTTP_STATUS.FORBIDDEN,
+        `Model "${targetModel}" is not allowed for this API key`
+      );
+    }
+  } catch (error) {
+    log.error("API_POLICY", "Routing-target policy check failed.", { error });
+    return errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, "API key policy unavailable");
+  }
+  return null;
+}
