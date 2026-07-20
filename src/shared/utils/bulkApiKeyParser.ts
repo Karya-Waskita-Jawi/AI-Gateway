@@ -111,3 +111,24 @@ export function parseBulkApiKeys(
 }
 
 export const BULK_API_KEY_MAX_LINES = MAX_BULK_LINES;
+
+/**
+ * Ensure each entry name is unique against `existingNames` and earlier entries
+ * in the same batch by appending " 2", " 3", … when needed.
+ */
+export function resolveBulkNameCollisions<T extends { name: string }>(
+  entries: T[],
+  existingNames: string[]
+): T[] {
+  const taken = new Set(existingNames.map((n) => n.toLowerCase()));
+  return entries.map((entry) => {
+    const base = entry.name.trim() || "Key";
+    let candidate = base;
+    let n = 2;
+    while (taken.has(candidate.toLowerCase())) {
+      candidate = `${base} ${n++}`;
+    }
+    taken.add(candidate.toLowerCase());
+    return { ...entry, name: candidate };
+  });
+}

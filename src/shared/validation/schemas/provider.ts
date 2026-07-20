@@ -95,6 +95,23 @@ export const createProviderSchema = z
     }
   });
 
+// Multi-provider file import (#6836) — each row may target a different provider.
+export const bulkImportProviderSchema = z.object({
+  entries: z
+    .array(
+      z.object({
+        provider: z.string().min(1).max(100),
+        name: z.string().min(1).max(200),
+        apiKey: z.string().min(1).max(MAX_PROVIDER_CREDENTIAL_LENGTH),
+        baseUrl: z.string().min(1).max(2000).optional(),
+        priority: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .min(1, "entries must contain at least 1 item")
+    .max(200, "entries must contain at most 200 items"),
+  validateKeys: z.boolean().optional(),
+});
+
 export const bulkCreateProviderSchema = z
   .object({
     provider: z.string().min(1).max(100),
