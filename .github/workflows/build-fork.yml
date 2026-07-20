@@ -3,69 +3,47 @@ name: Publish Fork Image to GHCR
 on:
   push:
     branches: [main]
-    tags:
-      - "v*"
   workflow_dispatch:
 
-# Least-privilege default: read-only at the top level; the build job that pushes to
-# GHCR grants packages: write itself (Scorecard TokenPermissions).
 permissions:
   contents: read
+  packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/kang-heewon/omniroute
+  REGISTRY: ghcr.io
+  # GHCR requires lowercase image names
+  IMAGE_NAME: ghcr.io/karya-waskita-jawi/ai-gateway
 
 jobs:
   build:
-    name: Build and Push Fork Image
-    if: github.repository == 'kang-heewon/OmniRoute'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    name: Build and Push
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-
-            type=ref,event=tag
-          labels: |
-            org.opencontainers.image.title=omniroute
-            org.opencontainers.image.description=Unified AI proxy/router — fork image
-            org.opencontainers.image.url=https://github.com/kang-heewon/OmniRoute
-            org.opencontainers.image.source=https://github.com/kang-heewon/OmniRoute
-            org.opencontainers.image.licenses=MIT
-
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile
           target: runner-base
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            OMNIROUTE_BUILD_MEMORY_MB=8192
